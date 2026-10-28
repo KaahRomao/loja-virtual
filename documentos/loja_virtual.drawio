@@ -388,7 +388,7 @@
     </mxGraphModel>
   </diagram>
   <diagram name="Modelo Lógico" id="j92RL03mHTSzuUrmfsHy">
-    <mxGraphModel dx="2395" dy="1803" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="2516" pageHeight="1595" math="0" shadow="0">
+    <mxGraphModel dx="2049" dy="1664" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="2516" pageHeight="1595" math="0" shadow="0">
       <root>
         <mxCell id="53G6of4dzqlvhDRo0Ny8-0" />
         <mxCell id="53G6of4dzqlvhDRo0Ny8-1" parent="53G6of4dzqlvhDRo0Ny8-0" />
@@ -1054,7 +1054,7 @@
             <mxRectangle height="30" width="30" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="cPCEjF8C4IkgaJ28bo64-9" parent="cPCEjF8C4IkgaJ28bo64-7" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;overflow=hidden;whiteSpace=wrap;html=1;" value="&lt;code&gt;email&lt;/code&gt; TEXT NOT NULL" vertex="1">
+        <mxCell id="cPCEjF8C4IkgaJ28bo64-9" parent="cPCEjF8C4IkgaJ28bo64-7" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;overflow=hidden;whiteSpace=wrap;html=1;" value="&lt;code&gt;email&lt;/code&gt; TEXT NOT NULL UNIQUE" vertex="1">
           <mxGeometry height="30" width="339" x="30" as="geometry">
             <mxRectangle height="30" width="339" as="alternateBounds" />
           </mxGeometry>
@@ -1067,7 +1067,7 @@
             <mxRectangle height="30" width="30" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="cPCEjF8C4IkgaJ28bo64-12" parent="cPCEjF8C4IkgaJ28bo64-10" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;overflow=hidden;whiteSpace=wrap;html=1;" value="&lt;code&gt;senha&lt;/code&gt; TEXT NOT NULL" vertex="1">
+        <mxCell id="cPCEjF8C4IkgaJ28bo64-12" parent="cPCEjF8C4IkgaJ28bo64-10" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;overflow=hidden;whiteSpace=wrap;html=1;" value="&lt;code&gt;senha&lt;/code&gt; TEXT NOT NULL&amp;nbsp;" vertex="1">
           <mxGeometry height="30" width="339" x="30" as="geometry">
             <mxRectangle height="30" width="339" as="alternateBounds" />
           </mxGeometry>
