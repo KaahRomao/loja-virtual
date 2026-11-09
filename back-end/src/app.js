@@ -15,9 +15,6 @@ app.get("/", (req, res) => {
 app.use("/produtos", produtoRoutes);
 app.use("/clientes", clienteRoutes);
 app.use("/login", authRoutes);
-app.get("/teste-token", autenticar, (req, res) => {
-  res.json({ clienteId: req.clienteId });
-});
 app.use("/pedidos", pedidoRoutes);
 
 module.exports = app;
