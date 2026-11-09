@@ -68,4 +68,8 @@ function criarPedido({ idCliente, itens, endereco_entrega, cep_entrega }) {
   };
 }
 
-module.exports = { criarPedido };
+function detalharPedido(id, idCliente) {
+  return pedidoModel.buscarPedido(id, idCliente);
+}
+
+module.exports = { criarPedido, detalharPedido };

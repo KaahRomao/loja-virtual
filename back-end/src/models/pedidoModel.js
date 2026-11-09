@@ -56,4 +56,30 @@ const gravar = db.transaction((pedido, itens) => {
   return idPedido;
 });
 
-module.exports = { buscarProdutoAtivo, gravar };
+function buscarPedido(id, idCliente) {
+  const pedido = db
+    .prepare(
+      `SELECT p.id, p.endereco_entrega, p.cep_entrega, p.valor_frete,
+              p.prazo_entrega, p.valor_total, p.data_criado,
+              s.nome_situacao AS situacao
+       FROM pedido p
+       JOIN situacao s ON s.id = p.id_situacao
+       WHERE p.id = ? AND p.id_cliente = ?`,
+    )
+    .get(id, idCliente);
+
+  if (!pedido) return undefined;
+
+  const itens = db
+    .prepare(
+      `SELECT pp.id_produto, pr.nome_produto, pp.quantidade, pp.valor_unitario
+       FROM produto_pedido pp
+       JOIN produto pr ON pr.id = pp.id_produto
+       WHERE pp.id_pedido = ?`,
+    )
+    .all(id);
+
+  return { ...pedido, itens };
+}
+
+module.exports = { buscarProdutoAtivo, gravar, buscarPedido };

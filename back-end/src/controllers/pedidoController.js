@@ -54,4 +54,25 @@ function criar(req, res) {
   }
 }
 
-module.exports = { criar };
+function detalhar(req, res) {
+  try {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ erro: "ID do pedido inválido" });
+    }
+
+    const pedido = pedidoService.detalharPedido(id, req.clienteId);
+
+    if (!pedido) {
+      return res.status(404).json({ erro: "Pedido não encontrado" });
+    }
+
+    return res.status(200).json(pedido);
+  } catch (erro) {
+    console.error(erro);
+    return res.status(500).json({ erro: "Erro interno do servidor" });
+  }
+}
+
+module.exports = { criar, detalhar };
