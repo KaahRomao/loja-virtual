@@ -4,7 +4,10 @@ const clienteRoutes = require("./routes/clienteRoutes");
 const authRoutes = require("./routes/authRoutes");
 const autenticar = require("./middlewares/autenticar");
 const pedidoRoutes = require("./routes/pedidoRoutes");
+const cors = require("cors");
 const app = express();
+
+app.use(cors());
 
 app.use(express.json());
 
