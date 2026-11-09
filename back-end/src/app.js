@@ -3,6 +3,7 @@ const produtoRoutes = require("./routes/produtoRoutes");
 const clienteRoutes = require("./routes/clienteRoutes");
 const authRoutes = require("./routes/authRoutes");
 const autenticar = require("./middlewares/autenticar");
+const pedidoRoutes = require("./routes/pedidoRoutes");
 const app = express();
 
 app.use(express.json());
@@ -17,5 +18,6 @@ app.use("/login", authRoutes);
 app.get("/teste-token", autenticar, (req, res) => {
   res.json({ clienteId: req.clienteId });
 });
+app.use("/pedidos", pedidoRoutes);
 
 module.exports = app;
