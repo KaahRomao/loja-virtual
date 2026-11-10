@@ -1,7 +1,5 @@
 const pedidoModel = require("../models/pedidoModel");
-
-const FRETE_FIXO = 1500; // TODO etapa 7: calcular pelo CEP
-const PRAZO_FIXO = 5; // TODO etapa 7: calcular pelo CEP
+const cepService = require("./cepService");
 
 function erroDeNegocio(codigo, mensagem) {
   const erro = new Error(mensagem);
@@ -9,7 +7,15 @@ function erroDeNegocio(codigo, mensagem) {
   return erro;
 }
 
-function criarPedido({ idCliente, itens, endereco_entrega, cep_entrega }) {
+async function criarPedido({
+  idCliente,
+  itens,
+  endereco_entrega,
+  cep_entrega,
+}) {
+  const endereco = await cepService.consultarCep(cep_entrega);
+  const { valor_frete, prazo_entrega } = cepService.calcularFrete(endereco.uf);
+
   const quantidades = new Map();
   for (const item of itens) {
     const atual = quantidades.get(item.id_produto) ?? 0;
@@ -45,14 +51,14 @@ function criarPedido({ idCliente, itens, endereco_entrega, cep_entrega }) {
     subtotal += produto.preco * quantidade;
   }
 
-  const valorTotal = subtotal + FRETE_FIXO;
+  const valorTotal = subtotal + valor_frete;
 
   const id = pedidoModel.gravar(
     {
       endereco_entrega,
       cep_entrega,
-      valor_frete: FRETE_FIXO,
-      prazo_entrega: PRAZO_FIXO,
+      valor_frete,
+      prazo_entrega,
       valor_total: valorTotal,
       id_cliente: idCliente,
     },
@@ -61,8 +67,8 @@ function criarPedido({ idCliente, itens, endereco_entrega, cep_entrega }) {
 
   return {
     id,
-    valor_frete: FRETE_FIXO,
-    prazo_entrega: PRAZO_FIXO,
+    valor_frete,
+    prazo_entrega,
     valor_total: valorTotal,
     itens: itensPedido,
   };

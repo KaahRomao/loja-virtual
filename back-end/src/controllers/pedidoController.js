@@ -1,6 +1,6 @@
 const pedidoService = require("../services/pedidoService");
 
-function criar(req, res) {
+async function criar(req, res) {
   try {
     const { itens, endereco_entrega, cep_entrega } = req.body ?? {};
 
@@ -34,7 +34,7 @@ function criar(req, res) {
       return res.status(400).json({ erro: "CEP inválido" });
     }
 
-    const pedido = pedidoService.criarPedido({
+    const pedido = await pedidoService.criarPedido({
       idCliente: req.clienteId,
       itens,
       endereco_entrega: endereco_entrega.trim(),
@@ -48,6 +48,15 @@ function criar(req, res) {
     }
     if (erro.codigo === "ESTOQUE_INSUFICIENTE") {
       return res.status(409).json({ erro: erro.message });
+    }
+    if (erro.codigo === "CEP_INVALIDO") {
+      return res.status(400).json({ erro: erro.message });
+    }
+    if (erro.codigo === "CEP_NAO_ENCONTRADO") {
+      return res.status(404).json({ erro: erro.message });
+    }
+    if (erro.codigo === "CEP_SERVICO_INDISPONIVEL") {
+      return res.status(502).json({ erro: erro.message });
     }
     console.error(erro);
     res.status(500).json({ erro: "Erro interno do servidor" });
