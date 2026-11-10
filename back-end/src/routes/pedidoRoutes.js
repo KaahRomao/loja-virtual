@@ -5,5 +5,6 @@ const router = express.Router();
 
 router.post("/", autenticar, pedidoController.criar);
 router.get("/:id", autenticar, pedidoController.detalhar);
+router.post("/:id/pagamento", autenticar, pedidoController.pagar);
 
 module.exports = router;
