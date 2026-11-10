@@ -6,6 +6,7 @@ const autenticar = require("./middlewares/autenticar");
 const pedidoRoutes = require("./routes/pedidoRoutes");
 const cors = require("cors");
 const cepRoutes = require("./routes/cepRoutes");
+const pagamentoRoutes = require("./routes/pagamentoRoutes");
 const app = express();
 
 app.use(cors());
@@ -21,5 +22,6 @@ app.use("/clientes", clienteRoutes);
 app.use("/login", authRoutes);
 app.use("/pedidos", pedidoRoutes);
 app.use("/cep", cepRoutes);
+app.use("/pagamentos", pagamentoRoutes);
 
 module.exports = app;

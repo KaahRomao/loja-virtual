@@ -42,6 +42,7 @@ async function buscarPagamento(idPagamento) {
   return {
     id: pagamento.id,
     status: pagamento.status,
+    forma: pagamento.payment_type_id,
     id_pedido: Number(pagamento.external_reference),
     valor: pagamento.transaction_amount,
   };
