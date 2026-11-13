@@ -20,7 +20,7 @@ function pagamentoExiste(idTransacao) {
 
 const registrar = db.transaction(
   ({ idTransacao, forma, idPedido, aprovado }) => {
-    const agora = new Date().toISOString();
+    const agora = new Date().toISOString().replace("T", " ").slice(0, 19);
 
     db.prepare(
       `INSERT INTO pagamento
