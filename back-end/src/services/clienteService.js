@@ -2,7 +2,7 @@ const bcrypt = require("bcryptjs");
 const clienteModel = require("../models/clienteModel");
 
 async function cadastrar({ nome_cliente, email, senha }) {
-  const existente = clienteModel.buscarPorEmail(email);
+  const existente = await clienteModel.buscarPorEmail(email);
 
   if (existente) {
     const erro = new Error("Email já cadastrado");

@@ -1,21 +1,24 @@
 const db = require("../database/connection");
 
-function buscarPorEmail(email) {
-  return db
-    .prepare(
-      "SELECT id, nome_cliente, email, senha, status FROM cliente WHERE email = ?",
-    )
-    .get(email);
+async function buscarPorEmail(email) {
+  const resultado = await db.execute({
+    sql: "SELECT id, nome_cliente, email, senha, status FROM cliente WHERE email = ?",
+    args: [email],
+  });
+  return resultado.rows[0];
 }
 
-function criar({ nome_cliente, email, senha }) {
-  const resultado = db
-    .prepare(
-      "INSERT INTO cliente (nome_cliente, email, senha) VALUES (?, ?, ?)",
-    )
-    .run(nome_cliente, email, senha);
+async function criar({ nome_cliente, email, senha }) {
+  const resultado = await db.execute({
+    sql: "INSERT INTO cliente (nome_cliente, email, senha) VALUES (?, ?, ?)",
+    args: [nome_cliente, email, senha],
+  });
 
-  return { id: resultado.lastInsertRowid, nome_cliente, email };
+  return {
+    id: Number(resultado.lastInsertRowid),
+    nome_cliente,
+    email,
+  };
 }
 
 module.exports = { buscarPorEmail, criar };

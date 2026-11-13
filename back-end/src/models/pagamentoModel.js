@@ -1,50 +1,55 @@
 const db = require("../database/connection");
 
-function buscarPedidoBasico(id) {
-  return db
-    .prepare(
-      `SELECT p.id, p.valor_total, s.nome_situacao AS situacao
-       FROM pedido p
-       JOIN situacao s ON s.id = p.id_situacao
-       WHERE p.id = ?`,
-    )
-    .get(id);
+async function buscarPedidoBasico(id) {
+  const resultado = await db.execute({
+    sql: `SELECT p.id, p.valor_total, s.nome_situacao AS situacao
+          FROM pedido p
+          JOIN situacao s ON s.id = p.id_situacao
+          WHERE p.id = ?`,
+    args: [id],
+  });
+  return resultado.rows[0];
 }
 
-function pagamentoExiste(idTransacao) {
-  const linha = db
-    .prepare("SELECT 1 FROM pagamento WHERE id_transacao_externa = ?")
-    .get(String(idTransacao));
-  return linha !== undefined;
+async function pagamentoExiste(idTransacao) {
+  const resultado = await db.execute({
+    sql: "SELECT 1 FROM pagamento WHERE id_transacao_externa = ?",
+    args: [String(idTransacao)],
+  });
+  return resultado.rows[0] !== undefined;
 }
 
-const registrar = db.transaction(
-  ({ idTransacao, forma, idPedido, aprovado }) => {
-    const agora = new Date().toISOString().replace("T", " ").slice(0, 19);
+async function registrar({ idTransacao, forma, idPedido, aprovado }) {
+  const agora = new Date().toISOString().replace("T", " ").slice(0, 19);
 
-    db.prepare(
-      `INSERT INTO pagamento
-         (id_transacao_externa, forma_pagamento, id_pedido,
-          data_aprovacao, id_situacao, data_criado)
-       VALUES
-         (?, ?, ?, ?, (SELECT id FROM situacao WHERE nome_situacao = ?), ?)`,
-    ).run(
-      String(idTransacao),
-      forma,
-      idPedido,
-      aprovado ? agora : null,
-      aprovado ? "Aprovado" : "Recusado",
-      agora,
-    );
+  const comandos = [
+    {
+      sql: `INSERT INTO pagamento
+              (id_transacao_externa, forma_pagamento, id_pedido,
+               data_aprovacao, id_situacao, data_criado)
+            VALUES
+              (?, ?, ?, ?, (SELECT id FROM situacao WHERE nome_situacao = ?), ?)`,
+      args: [
+        String(idTransacao),
+        forma,
+        idPedido,
+        aprovado ? agora : null,
+        aprovado ? "Aprovado" : "Recusado",
+        agora,
+      ],
+    },
+  ];
 
-    if (aprovado) {
-      db.prepare(
-        `UPDATE pedido
-         SET id_situacao = (SELECT id FROM situacao WHERE nome_situacao = 'Pago')
-         WHERE id = ?`,
-      ).run(idPedido);
-    }
-  },
-);
+  if (aprovado) {
+    comandos.push({
+      sql: `UPDATE pedido
+            SET id_situacao = (SELECT id FROM situacao WHERE nome_situacao = 'Pago')
+            WHERE id = ?`,
+      args: [idPedido],
+    });
+  }
+
+  await db.batch(comandos, "write");
+}
 
 module.exports = { buscarPedidoBasico, pagamentoExiste, registrar };
