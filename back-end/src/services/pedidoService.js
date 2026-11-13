@@ -26,7 +26,7 @@ async function criarPedido({
   let subtotal = 0;
 
   for (const [idProduto, quantidade] of quantidades) {
-    const produto = pedidoModel.buscarProdutoAtivo(idProduto);
+    const produto = await pedidoModel.buscarProdutoAtivo(idProduto);
 
     if (!produto) {
       throw erroDeNegocio(
@@ -53,7 +53,7 @@ async function criarPedido({
 
   const valorTotal = subtotal + valor_frete;
 
-  const id = pedidoModel.gravar(
+  const id = await pedidoModel.gravar(
     {
       endereco_entrega,
       cep_entrega,
@@ -74,7 +74,7 @@ async function criarPedido({
   };
 }
 
-function detalharPedido(id, idCliente) {
+async function detalharPedido(id, idCliente) {
   return pedidoModel.buscarPedido(id, idCliente);
 }
 

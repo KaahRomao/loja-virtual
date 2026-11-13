@@ -17,12 +17,12 @@ async function processarPagamento(idPagamento) {
     return { processado: false, motivo: "pagamento sem pedido" };
   }
 
-  const pedido = pagamentoModel.buscarPedidoBasico(pg.id_pedido);
+  const pedido = await pagamentoModel.buscarPedidoBasico(pg.id_pedido);
   if (!pedido) {
     return { processado: false, motivo: "pedido inexistente" };
   }
 
-  if (pagamentoModel.pagamentoExiste(pg.id)) {
+  if (await pagamentoModel.pagamentoExiste(pg.id)) {
     return { processado: false, motivo: "já registrado" };
   }
 
@@ -35,7 +35,7 @@ async function processarPagamento(idPagamento) {
     }
   }
 
-  pagamentoModel.registrar({
+  await pagamentoModel.registrar({
     idTransacao: pg.id,
     forma: pg.forma,
     idPedido: pedido.id,

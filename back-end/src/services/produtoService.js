@@ -1,10 +1,10 @@
 const produtoModel = require("../models/produtoModel");
 
-function listarProdutos(filtros) {
+async function listarProdutos(filtros) {
   return produtoModel.listar(filtros);
 }
 
-function detalharProduto(id) {
+async function detalharProduto(id) {
   return produtoModel.buscarPorId(id);
 }
 

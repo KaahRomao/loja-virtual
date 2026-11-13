@@ -1,9 +1,9 @@
 const produtoService = require("../services/produtoService");
 
-function listar(req, res) {
+async function listar(req, res) {
   try {
     const { categoria, busca } = req.query;
-    const produtos = produtoService.listarProdutos({ categoria, busca });
+    const produtos = await produtoService.listarProdutos({ categoria, busca });
     res.status(200).json(produtos);
   } catch (erro) {
     console.error(erro);
@@ -11,7 +11,7 @@ function listar(req, res) {
   }
 }
 
-function detalhar(req, res) {
+async function detalhar(req, res) {
   try {
     const id = Number(req.params.id);
 
@@ -19,7 +19,7 @@ function detalhar(req, res) {
       return res.status(400).json({ erro: "ID inválido" });
     }
 
-    const produto = produtoService.detalharProduto(id);
+    const produto = await produtoService.detalharProduto(id);
 
     if (!produto) {
       return res.status(404).json({ erro: "Produto não encontrado" });
