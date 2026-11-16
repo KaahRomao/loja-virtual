@@ -21,17 +21,24 @@ async function criarPreferencia(pedido) {
     currency_id: "BRL",
   });
 
-  const resposta = await new Preference(cliente()).create({
-    body: {
-      items,
-      external_reference: String(pedido.id),
-      notification_url: `${process.env.API_URL}/pagamentos/webhook`,
-      back_urls: {
-        success: `${process.env.FRONT_URL}/pedido/${pedido.id}`,
-        failure: `${process.env.FRONT_URL}/pedido/${pedido.id}`,
-        pending: `${process.env.FRONT_URL}/pedido/${pedido.id}`,
-      },
+  const bodyPreferencia = {
+    items,
+    external_reference: String(pedido.id),
+    notification_url: `${process.env.API_URL}/pagamentos/webhook`,
+    back_urls: {
+      success: `${process.env.FRONT_URL}/pedido/${pedido.id}`,
+      failure: `${process.env.FRONT_URL}/pedido/${pedido.id}`,
+      pending: `${process.env.FRONT_URL}/pedido/${pedido.id}`,
     },
+  };
+
+  // ADICIONE ESTA LINHA AQUI:
+  console.log("=== PAYLOAD ENVIADO AO MERCADO PAGO ===");
+  console.log(JSON.stringify(bodyPreferencia, null, 2));
+  console.log("========================================");
+
+  const resposta = await new Preference(cliente()).create({
+    body: bodyPreferencia,
   });
 
   return { id: resposta.id, link: resposta.init_point };
