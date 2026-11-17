@@ -1,10 +1,15 @@
-const Database = require("better-sqlite3");
+const { createClient } = require("@libsql/client");
 
-if (!process.env.DB_PATH) {
-  throw new Error("DB_PATH não definido. Carregue o .env");
+// Verifica se as variáveis do Turso estão configuradas
+if (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
+  console.warn(
+    "⚠️ Variáveis do Turso não configuradas. Usando banco local (se existir).",
+  );
 }
 
-const db = new Database(process.env.DB_PATH, { fileMustExist: true });
-db.pragma("foreign_keys = ON");
+const db = createClient({
+  url: process.env.TURSO_DATABASE_URL,
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
 
 module.exports = db;
