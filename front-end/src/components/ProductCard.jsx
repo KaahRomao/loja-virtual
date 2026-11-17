@@ -1,98 +1,53 @@
-import React from "react";
+import { Heart, Plus } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useStore } from "../hooks/useStore";
+import { formatPrice } from "../data/products";
+import ProductPhoto from "./ProductPhoto";
+import Button from "./ui/Button";
 
-export function ProductCard({
-  id,
-  name,
-  category,
-  unit,
-  price,
-  oldPrice,
-  isOffer,
-  image,
-  isFavorite,
-  onToggleFavorite,
-  onAddToCart,
-}) {
+export default function ProductCard({ product }) {
+  const { setQuantity, favorites, toggleFavorite, categoryNames } = useStore();
+  const fav = favorites.includes(product.id);
+  const to = `/produto/${product.id}`;
+
   return (
-    <article className="w-full max-w-[320px] bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col justify-between hover:shadow-md transition-all duration-200">
-      {/* Imagem do Produto */}
-      <div className="w-full h-56 relative bg-gray-50 flex items-center justify-center overflow-hidden">
-        <img
-          src={
-            image ||
-            "https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&q=80"
-          }
-          alt={name}
-          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-        />
-
-        {/* Badge de Oferta */}
-        {isOffer && (
-          <div className="absolute top-3 left-3 bg-amber-500 text-emerald-950 text-[10px] font-black font-['Nunito'] uppercase px-2.5 py-1 rounded-md shadow-xs">
-            OFERTA
-          </div>
+    <article className="min-w-0 overflow-hidden rounded-[7px] border border-border bg-card shadow-card transition-[translate,box-shadow] duration-200 hover:-translate-y-[3px] hover:shadow-card-hover motion-reduce:transition-none">
+      <Link className="relative block aspect-[1.22] cursor-pointer bg-surface tiny:aspect-square" aria-label={`Ver detalhes de ${product.name}`} to={to}>
+        <ProductPhoto product={product} />
+        {product.oldPrice && (
+          <span className="absolute top-3 left-3 rounded-[3px] bg-amber px-2 py-[5px] text-[10px] font-black text-foreground">OFERTA</span>
         )}
-
-        {/* Ícone de Favorito */}
         <button
-          onClick={() => onToggleFavorite && onToggleFavorite(id)}
-          className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center shadow-xs transition-transform hover:scale-110 ${
-            isFavorite
-              ? "bg-red-50 text-red-500"
-              : "bg-white/90 text-emerald-700 hover:text-red-500"
-          }`}
-          aria-label="Favoritar produto"
+          className="absolute top-[9px] right-[9px] inline-flex size-[34px] items-center justify-center rounded-full bg-card text-primary"
+          aria-label={`Favoritar ${product.name}`}
+          aria-pressed={fav}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleFavorite(product.id);
+          }}
         >
-          {isFavorite ? "♥" : "♡"}
+          <Heart size={17} fill={fav ? "currentColor" : "none"} />
         </button>
-      </div>
-
-      {/* Detalhes do Produto */}
-      <div className="p-4 flex flex-col justify-between flex-1">
-        <div>
-          <span className="text-emerald-700 text-[10px] font-black font-['Nunito'] uppercase tracking-wider block">
-            {category}
-          </span>
-          <h3 className="text-emerald-900 text-base font-semibold font-['Fredoka'] leading-snug mt-1">
-            {name}
-          </h3>
-          <p className="text-gray-500 text-xs font-normal font-['Nunito'] mt-0.5">
-            {unit}
-          </p>
-        </div>
-
-        {/* Preço e Botão Adicionar */}
-        <div className="flex items-end justify-between mt-4 pt-3 border-t border-gray-100">
-          <div className="flex flex-col">
-            {oldPrice && (
-              <span className="text-gray-400 text-xs font-normal font-['Nunito'] line-through leading-tight">
-                R$ {oldPrice.toFixed(2).replace(".", ",")}
-              </span>
+      </Link>
+      <div className="p-4 mobile:p-3 tiny:p-2.5">
+        <span className="block text-[10px] font-black tracking-[.08em] text-primary uppercase">{categoryNames[product.category]}</span>
+        <h3 className="mt-[5px] cursor-pointer overflow-hidden font-display text-[18px] font-medium text-ellipsis whitespace-nowrap text-deep mobile:text-[15px]">
+          <Link to={to}>{product.name}</Link>
+        </h3>
+        <p className="mt-[3px] text-[12px] text-muted-foreground">{product.unit}</p>
+        <div className="mt-3 flex min-h-[54px] items-end justify-between gap-[5px] mobile:min-h-12">
+          <div>
+            {product.oldPrice && (
+              <span className="block text-[12px] leading-[1.3] text-muted-foreground line-through">{formatPrice(product.oldPrice)}</span>
             )}
-            <strong className="text-emerald-900 text-xl font-bold font-['Fredoka']">
-              R$ {price.toFixed(2).replace(".", ",")}
+            <strong className="block font-display text-[24px] font-semibold leading-[1.1] text-deep mobile:text-[20px] tiny:text-[18px]">
+              {formatPrice(product.price)}
             </strong>
           </div>
-
-          <button
-            onClick={() =>
-              onAddToCart &&
-              onAddToCart({
-                id,
-                name,
-                category,
-                unit,
-                price,
-                oldPrice,
-                isOffer,
-                image,
-              })
-            }
-            className="w-9 h-9 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg flex items-center justify-center text-xl font-medium transition-colors cursor-pointer shadow-xs"
-            aria-label={`Adicionar ${name} ao carrinho`}
-          >
-            +
-          </button>
+          <Button variant="primary" size="icon" aria-label={`Adicionar ${product.name} ao carrinho`} onClick={() => setQuantity(product.id, 1)}>
+            <Plus size={16} />
+          </Button>
         </div>
       </div>
     </article>
