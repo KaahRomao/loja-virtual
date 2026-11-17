@@ -1,16 +1,63 @@
-# React + Vite
+# VORA Supermarket — Front-end
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Loja virtual do Projeto Integrador (SENAI Barueri). Interface em **React 19 + Tailwind CSS 4**, com o visual da loja publicada no Lovable (`vora-market-emoji-grocer.lovable.app`).
 
-Currently, two official plugins are available:
+## Como rodar
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+cd front-end
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # gera dist/
+npm run lint
+```
 
-## React Compiler
+## Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React 19 + Vite 8
+- Tailwind CSS 4 (`@tailwindcss/vite`) — tokens de cor, fontes e sombras em `src/index.css` (`@theme`)
+- react-router-dom 7
+- lucide-react (ícones)
+- Fontes: Fredoka (títulos) e Nunito (texto), carregadas pelo `index.html`
 
-## Expanding the ESLint configuration
+## Estrutura
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```
+src/
+  assets/          imagens (hero, logo, sprites dos produtos) + index.js
+  components/      Header, Footer, CartDrawer, ProductCard, ProductGrid, ...
+    ui/            Button e estilos reutilizáveis (styles.js)
+  context/         StoreProvider (carrinho, favoritos, endereço, pagamento, pedidos, admin)
+  data/products.js produtos, categorias e funções de formatação (dados de exemplo)
+  hooks/           useStore
+  layouts/         StoreLayout (loja) e AdminLayout (painel)
+  pages/           Home, Catalog, ProductDetail, Cart, Checkout*, Login, Signup
+  pages/admin/     Dashboard, Produtos, Pedidos, Categorias
+```
+
+## Rotas
+
+| Rota | Tela |
+| --- | --- |
+| `/` | Home |
+| `/catalogo`, `/categoria/:slug` | Catálogo / categoria |
+| `/produto/:id` | Detalhe do produto |
+| `/carrinho` | Carrinho |
+| `/checkout/endereco` → `/pagamento` → `/confirmacao` | Checkout |
+| `/entrar`, `/cadastro` | Login e cadastro |
+| `/admin`, `/admin/produtos`, `/admin/produtos/:id`, `/admin/pedidos`, `/admin/categorias` | Painel administrativo |
+
+## Importante: os dados são de exemplo
+
+Nada aqui conversa com o back-end ainda. Produtos, pedidos, carrinho, login e painel admin vivem em memória (`StoreProvider` + `data/products.js`) e somem ao recarregar a página. Os pontos onde a integração entra estão marcados com o comentário `Aqui você ... no seu back-end`:
+
+- `layouts/AdminLayout.jsx` — login do administrador
+- `pages/Login.jsx` e `pages/Signup.jsx` — autenticação do cliente
+- `context/StoreProvider.jsx` — envio do pedido
+- `pages/admin/AdminProductEdit.jsx` — salvar produto
+
+Ao integrar, atenção às diferenças de formato: o front usa preço em reais (`22.9`), enquanto o back-end trabalha em centavos, e os ids de produto/categoria precisam bater com os da API.
+
+## Responsivo
+
+Breakpoints próprios (definidos com `@custom-variant` em `index.css`): `compact` (≤1100px), `tablet` (≤900px), `mobile` (≤760px) e `tiny` (≤390px).

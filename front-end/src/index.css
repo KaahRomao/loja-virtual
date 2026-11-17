@@ -1,1 +1,91 @@
 @import "tailwindcss";
+
+/* =====================================================================
+   VORA Supermarket — tema (Tailwind v4)
+   As cores e fontes abaixo viram classes: bg-primary, text-deep,
+   border-border, font-display, shadow-card...
+   ===================================================================== */
+@theme {
+  --font-sans: "Nunito", sans-serif;
+  --font-display: "Fredoka", sans-serif;
+
+  --color-background: oklch(99.5% 0.003 163);
+  --color-foreground: oklch(23% 0.045 177);
+  --color-card: oklch(100% 0 0);
+  --color-primary: oklch(50% 0.095 178);
+  --color-primary-foreground: oklch(100% 0 0);
+  --color-secondary: oklch(94% 0.035 173);
+  --color-muted: oklch(96.5% 0.01 170);
+  --color-muted-foreground: oklch(48% 0.025 175);
+  --color-accent: oklch(96% 0.046 164);
+  --color-accent-foreground: oklch(34% 0.085 178);
+  --color-destructive: oklch(58% 0.2 25);
+  --color-border: oklch(90% 0.013 169);
+  --color-ring: oklch(62% 0.11 178);
+
+  /* cores próprias da marca */
+  --color-deep: oklch(38% 0.08 178);
+  --color-amber: oklch(77% 0.166 72);
+  --color-pale: oklch(94.9% 0.065 174);
+  --color-surface: oklch(97.5% 0.007 160);
+  --color-soft-ink: oklch(45% 0.025 173);
+  --color-cream: oklch(98% 0.015 87);
+  --color-footer: oklch(29% 0.06 180);
+
+  --shadow-card: 0 3px 20px oklch(31% 0.04 175 / 0.055);
+  --shadow-card-hover: 0 10px 27px oklch(31% 0.04 175 / 0.1);
+}
+
+/* Pontos de quebra do design original (largura MÁXIMA, de grande para pequeno).
+   Uso: mobile:hidden  =  esconde em telas de até 760px.
+   A ordem importa: o último vence quando mais de um se aplica. */
+@custom-variant compact (@media (width <= 1100px));
+@custom-variant tablet (@media (width <= 900px));
+@custom-variant mobile (@media (width <= 760px));
+@custom-variant tiny (@media (width <= 390px));
+
+/* Largura padrão do conteúdo: container-shell */
+@utility container-shell {
+  width: min(100% - 64px, 1280px);
+  margin-inline: auto;
+
+  @media (width <= 760px) {
+    width: min(100% - 32px, 1280px);
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  h1,
+  h2,
+  h3,
+  b,
+  strong {
+    letter-spacing: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
