@@ -2,14 +2,13 @@ import { useState } from "react";
 import { SlidersHorizontal, Search } from "lucide-react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import ProductGrid from "../components/ProductGrid";
-import { products, categorySlugs } from "../data/products";
 import { useStore } from "../hooks/useStore";
 import { cx, eyebrow, pillLink, sectionTitle } from "../components/ui/styles";
 
 const normalize = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 export default function Catalog({ category }) {
-  const { categoryNames } = useStore();
+  const { categoryNames, products, categorySlugs } = useStore();
   const { pathname } = useLocation();
   const [params] = useSearchParams();
   const offers = params.get("ofertas") === "true";
@@ -25,35 +24,58 @@ export default function Catalog({ category }) {
   if (sort === "lowest") list = [...list].sort((a, b) => a.price - b.price);
   if (sort === "highest") list = [...list].sort((a, b) => b.price - a.price);
 
-  const title = q ? `Resultados para “${q}”` : offers ? "Ofertas da semana" : category ? categoryNames[category] : "Tudo para sua lista";
+  const title = q
+    ? `Resultados para “${q}”`
+    : offers
+      ? "Ofertas da semana"
+      : category
+        ? categoryNames[category]
+        : "Tudo para sua lista";
   const subtitle = q
     ? `${list.length} ${list.length === 1 ? "produto encontrado" : "produtos encontrados"}`
     : "Escolha com calma. Aqui tem qualidade e economia para você.";
 
   const allActive = pathname === "/catalogo" && !offers;
   const filters = [
-    { to: "/catalogo", label: "Todos os produtos", count: products.length, active: allActive },
+    {
+      to: "/catalogo",
+      label: "Todos os produtos",
+      count: products.length,
+      active: allActive,
+    },
     ...categorySlugs.map((slug) => ({
       to: `/categoria/${slug}`,
       label: categoryNames[slug],
       count: products.filter((p) => p.category === slug).length,
       active: category === slug,
     })),
-    { to: "/catalogo?ofertas=true", label: "Ofertas", count: products.filter((p) => p.oldPrice).length, active: offers },
+    {
+      to: "/catalogo?ofertas=true",
+      label: "Ofertas",
+      count: products.filter((p) => p.oldPrice).length,
+      active: offers,
+    },
   ];
 
   return (
     <section className="container-shell min-h-[620px] pb-[90px]">
       <div className="flex items-center gap-[9px] pt-6 text-[12px] text-muted-foreground">
-        <Link className="hover:underline" to="/">Início</Link>
-        <span><span>/</span> {category ? categoryNames[category] : "Todos os produtos"}</span>
+        <Link className="hover:underline" to="/">
+          Início
+        </Link>
+        <span>
+          <span>/</span>{" "}
+          {category ? categoryNames[category] : "Todos os produtos"}
+        </span>
       </div>
 
       <div className="mt-[42px] mb-[35px] mobile:my-[30px]">
         <div>
           <span className={eyebrow}>CATÁLOGO VORA</span>
           <h1 className={sectionTitle}>{title}</h1>
-          <p className="mt-[7px] text-[14px] text-muted-foreground">{subtitle}</p>
+          <p className="mt-[7px] text-[14px] text-muted-foreground">
+            {subtitle}
+          </p>
         </div>
       </div>
 
@@ -72,7 +94,10 @@ export default function Catalog({ category }) {
                 )}
                 to={f.to}
               >
-                {f.label} <span className="text-[11px] text-muted-foreground">{f.count}</span>
+                {f.label}{" "}
+                <span className="text-[11px] text-muted-foreground">
+                  {f.count}
+                </span>
               </Link>
             ))}
           </div>
@@ -80,7 +105,9 @@ export default function Catalog({ category }) {
 
         <div>
           <div className="mb-5 flex items-center justify-between border-b border-border pb-[15px] text-[13px]">
-            <span><b>{list.length}</b> produtos</span>
+            <span>
+              <b>{list.length}</b> produtos
+            </span>
             <label className="flex items-center gap-2.5 text-muted-foreground">
               Ordenar por{" "}
               <select
@@ -100,14 +127,27 @@ export default function Catalog({ category }) {
           ) : (
             <div className="px-[15px] py-[70px] text-center text-muted-foreground">
               <Search size={36} className="mx-auto text-primary" />
-              <h2 className="mt-[15px] font-display text-[24px] font-medium leading-[normal] text-deep">Não achamos isso por aqui.</h2>
-              <p className="mt-2 mb-6">Confira se o nome está certinho ou experimente uma destas categorias:</p>
+              <h2 className="mt-[15px] font-display text-[24px] font-medium leading-[normal] text-deep">
+                Não achamos isso por aqui.
+              </h2>
+              <p className="mt-2 mb-6">
+                Confira se o nome está certinho ou experimente uma destas
+                categorias:
+              </p>
               <div className="mb-3.5 flex flex-wrap justify-center gap-2">
                 {categorySlugs.map((slug) => (
-                  <Link key={slug} className={pillLink("outline", "md")} to={`/categoria/${slug}`}>{categoryNames[slug]}</Link>
+                  <Link
+                    key={slug}
+                    className={pillLink("outline", "md")}
+                    to={`/categoria/${slug}`}
+                  >
+                    {categoryNames[slug]}
+                  </Link>
                 ))}
               </div>
-              <Link className={pillLink("primary", "md")} to="/catalogo">Ver todos os produtos</Link>
+              <Link className={pillLink("primary", "md")} to="/catalogo">
+                Ver todos os produtos
+              </Link>
             </div>
           )}
         </div>

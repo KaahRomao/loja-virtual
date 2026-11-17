@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Route, Routes, useLocation, useParams } from "react-router-dom";
 import { StoreProvider } from "./context/StoreProvider";
-import { categorySlugs } from "./data/products";
+import { useStore } from "./hooks/useStore";
 import StoreLayout from "./layouts/StoreLayout";
 import AdminLayout from "./layouts/AdminLayout";
 import Home from "./pages/Home";
@@ -32,7 +32,12 @@ function ScrollToTop() {
 // /categoria/:slug — só aceita categorias que existem
 function CategoryPage() {
   const { slug } = useParams();
-  return categorySlugs.includes(slug) ? <Catalog key={slug} category={slug} /> : <NotFound />;
+  const { categorySlugs } = useStore();
+  return categorySlugs.includes(slug) ? (
+    <Catalog key={slug} category={slug} />
+  ) : (
+    <NotFound />
+  );
 }
 
 // /admin/produtos/:id — o key reinicia o formulário ao trocar de produto
@@ -55,7 +60,10 @@ export default function App() {
           <Route path="carrinho" element={<Cart />} />
           <Route path="checkout/endereco" element={<CheckoutAddress />} />
           <Route path="checkout/pagamento" element={<CheckoutPayment />} />
-          <Route path="checkout/confirmacao" element={<CheckoutConfirmation />} />
+          <Route
+            path="checkout/confirmacao"
+            element={<CheckoutConfirmation />}
+          />
           <Route path="entrar" element={<Login />} />
           <Route path="cadastro" element={<Signup />} />
           <Route path="*" element={<NotFound />} />

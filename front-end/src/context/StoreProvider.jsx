@@ -1,33 +1,93 @@
-import { useMemo, useState } from "react";
-import { products, adminProducts, sampleOrders } from "../data/products";
+import { useEffect, useMemo, useState } from "react";
+import { sampleOrders } from "../data/products";
+import { listarProdutos } from "../services/api";
 import { StoreContext } from "./store-context";
 
-// Estado da loja: carrinho, favoritos, checkout e painel (só nesta visita).
+// Estado da loja: produtos (vindos da API), carrinho, favoritos, checkout e painel (só nesta visita).
 export function StoreProvider({ children }) {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [cart, setCart] = useState({});
   const [cartOpen, setCartOpen] = useState(false);
   const [favorites, setFavorites] = useState([]);
-  const [categoryNames, setCategoryNames] = useState({ comida: "Comida", snacks: "Snacks", limpeza: "Limpeza" });
-  const [address, setAddress] = useState({ name: "", zip: "", street: "", number: "", complement: "" });
+  const [categoryNames, setCategoryNames] = useState({});
+  const [address, setAddress] = useState({
+    name: "",
+    zip: "",
+    street: "",
+    number: "",
+    complement: "",
+  });
   const [payment, setPayment] = useState("pix");
   const [lastOrder, setLastOrder] = useState(null);
   const [user, setUser] = useState(null);
   const [adminSignedIn, setAdminSignedIn] = useState(false);
-  const [rows, setRows] = useState(adminProducts);
+  const [rows, setRows] = useState([]);
   const [orders, setOrders] = useState(sampleOrders);
+
+  // Carrega os produtos uma vez, quando a loja abre.
+  useEffect(() => {
+    let cancelado = false;
+
+    listarProdutos()
+      .then((lista) => {
+        if (cancelado) return;
+        const nomes = {};
+        for (const p of lista) nomes[p.category] = p.categoryName;
+        setProducts(lista);
+        setCategoryNames(nomes);
+        setRows(lista.map((p) => ({ ...p, active: true })));
+      })
+      .catch((e) => {
+        if (!cancelado) setError(e.message);
+      })
+      .finally(() => {
+        if (!cancelado) setLoading(false);
+      });
+
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const value = useMemo(() => {
     const totalItems = Object.values(cart).reduce((s, q) => s + q, 0);
-    const total = Math.round(products.reduce((s, p) => s + p.price * (cart[p.id] || 0), 0) * 100) / 100;
-    const cartItems = products.filter((p) => cart[p.id]).map((p) => ({ ...p, qty: cart[p.id] }));
+    const total =
+      Math.round(
+        products.reduce((s, p) => s + p.price * (cart[p.id] || 0), 0) * 100,
+      ) / 100;
+    const cartItems = products
+      .filter((p) => cart[p.id])
+      .map((p) => ({ ...p, qty: cart[p.id] }));
 
     return {
-      cart, cartItems, totalItems, total,
-      cartOpen, setCartOpen,
-      favorites, categoryNames, setCategoryNames,
-      address, setAddress, payment, setPayment, lastOrder,
-      user, setUser, adminSignedIn, setAdminSignedIn,
-      rows, setRows, orders, setOrders,
+      products,
+      loading,
+      error,
+      categorySlugs: Object.keys(categoryNames),
+      cart,
+      cartItems,
+      totalItems,
+      total,
+      cartOpen,
+      setCartOpen,
+      favorites,
+      categoryNames,
+      setCategoryNames,
+      address,
+      setAddress,
+      payment,
+      setPayment,
+      lastOrder,
+      user,
+      setUser,
+      adminSignedIn,
+      setAdminSignedIn,
+      rows,
+      setRows,
+      orders,
+      setOrders,
       setQuantity: (id, delta) =>
         setCart((prev) => {
           const next = { ...prev };
@@ -36,9 +96,17 @@ export function StoreProvider({ children }) {
           else next[id] = q;
           return next;
         }),
-      removeItem: (id) => setCart((prev) => { const next = { ...prev }; delete next[id]; return next; }),
+      removeItem: (id) =>
+        setCart((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        }),
       clearCart: () => setCart({}),
-      toggleFavorite: (id) => setFavorites((f) => (f.includes(id) ? f.filter((x) => x !== id) : [...f, id])),
+      toggleFavorite: (id) =>
+        setFavorites((f) =>
+          f.includes(id) ? f.filter((x) => x !== id) : [...f, id],
+        ),
       placeOrder: () => {
         // Aqui você envia o pedido para o seu back-end.
         const order = {
@@ -56,7 +124,24 @@ export function StoreProvider({ children }) {
         return order;
       },
     };
-  }, [cart, cartOpen, favorites, categoryNames, address, payment, lastOrder, user, adminSignedIn, rows, orders]);
+  }, [
+    products,
+    loading,
+    error,
+    cart,
+    cartOpen,
+    favorites,
+    categoryNames,
+    address,
+    payment,
+    lastOrder,
+    user,
+    adminSignedIn,
+    rows,
+    orders,
+  ]);
 
-  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
+  return (
+    <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
+  );
 }
