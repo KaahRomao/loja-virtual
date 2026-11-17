@@ -1,34 +1,34 @@
 const db = require("../database/connection");
-
 const SO_ATIVOS =
-  "id_situacao = (SELECT id FROM situacao WHERE nome_situacao = 'Ativo')";
+  "p.id_situacao = (SELECT id FROM situacao WHERE nome_situacao = 'Ativo')";
 
-const COLUNAS =
-  "id, nome_produto, descricao, img_url, preco, estoque, id_categoria";
+const COLUNAS = `p.id, p.nome_produto, p.descricao, p.img_url, p.preco,
+  p.estoque, p.id_categoria, c.nome_categoria`;
 
-async function listar({ categoria, busca } = {}) {
-  let sql = `SELECT ${COLUNAS} FROM produto WHERE ${SO_ATIVOS}`;
-  const args = [];
+const DE_ONDE = "FROM produto p JOIN categoria c ON c.id = p.id_categoria";
+
+function listar({ categoria, busca }) {
+  let sql = `SELECT ${COLUNAS} ${DE_ONDE} WHERE ${SO_ATIVOS}`;
+  const params = [];
 
   if (categoria) {
-    sql += " AND id_categoria = ?";
-    args.push(categoria);
+    sql += " AND p.id_categoria = ?";
+    params.push(categoria);
   }
   if (busca) {
-    sql += " AND nome_produto LIKE ?";
-    args.push(`%${busca}%`);
+    sql += " AND p.nome_produto LIKE ?";
+    params.push(`%${busca}%`);
   }
 
-  const resultado = await db.execute({ sql, args });
-  return resultado.rows;
+  sql += " ORDER BY p.id";
+
+  return db.prepare(sql).all(...params);
 }
 
-async function buscarPorId(id) {
-  const resultado = await db.execute({
-    sql: `SELECT * FROM produto WHERE id = ? AND ${SO_ATIVOS}`,
-    args: [id],
-  });
-  return resultado.rows[0];
+function buscarPorId(id) {
+  return db
+    .prepare(`SELECT ${COLUNAS} ${DE_ONDE} WHERE p.id = ? AND ${SO_ATIVOS}`)
+    .get(id);
 }
 
 module.exports = { listar, buscarPorId };

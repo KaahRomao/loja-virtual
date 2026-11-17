@@ -2,7 +2,6 @@ const express = require("express");
 const produtoRoutes = require("./routes/produtoRoutes");
 const clienteRoutes = require("./routes/clienteRoutes");
 const authRoutes = require("./routes/authRoutes");
-const autenticar = require("./middlewares/autenticar");
 const pedidoRoutes = require("./routes/pedidoRoutes");
 const cors = require("cors");
 const cepRoutes = require("./routes/cepRoutes");
