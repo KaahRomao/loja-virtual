@@ -32,13 +32,6 @@ async function criarPreferencia(pedido) {
     },
   };
 
-  // TEMPORÁRIO: remover depois de resolver o 403
-  console.log(
-    "TOKEN CHECK:",
-    process.env.MP_ACCESS_TOKEN?.slice(0, 31),
-    process.env.MP_ACCESS_TOKEN?.length,
-  );
-
   const resposta = await new Preference(cliente()).create({
     body: bodyPreferencia,
   });
