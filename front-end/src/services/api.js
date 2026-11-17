@@ -1,25 +1,89 @@
-// Uso (na pasta back-end): node --env-file=.env scripts/limpar-duplicados.js
-// Remove produtos repetidos (mesmo nome), mantendo o de menor id.
-// Nunca apaga produto que já aparece em algum pedido.
-const db = require("../src/database/connection");
+// Camada de acesso à API do back-end. Todas as chamadas passam por request().
+export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
-const duplicados = db
-  .prepare(
-    `SELECT p.id, p.nome_produto
-     FROM produto p
-     WHERE p.id > (SELECT MIN(q.id) FROM produto q WHERE q.nome_produto = p.nome_produto)
-       AND p.id NOT IN (SELECT id_produto FROM produto_pedido)`,
-  )
-  .all();
+const TOKEN_KEY = "vora_token";
 
-const apagar = db.prepare("DELETE FROM produto WHERE id = ?");
-const executar = db.transaction((lista) => {
-  for (const p of lista) apagar.run(p.id);
-});
+export const getToken = () => {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+};
 
-executar(duplicados);
-console.log(`Removidos ${duplicados.length} produtos duplicados.`);
-console.log(
-  "Produtos restantes:",
-  db.prepare("SELECT COUNT(*) AS n FROM produto").get().n,
-);
+export const saveToken = (token) => {
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* sem localStorage: o login vale só até recarregar a página */
+  }
+};
+
+// Erro com a mensagem que o back-end devolve em { erro } e o status HTTP.
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.status = status;
+  }
+}
+
+export async function request(
+  path,
+  { method = "GET", body, auth = false } = {},
+) {
+  const headers = {};
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (auth) {
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+
+  let resposta;
+  try {
+    resposta = await fetch(`${API_URL}${path}`, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new ApiError(
+      "Não foi possível falar com o servidor. Tente de novo.",
+      0,
+    );
+  }
+
+  const dados = await resposta.json().catch(() => null);
+  if (!resposta.ok) {
+    throw new ApiError(dados?.erro ?? "Erro inesperado", resposta.status);
+  }
+  return dados;
+}
+
+export const slugify = (texto) =>
+  texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+
+// Converte o produto do back-end (centavos, nomes do banco) para o formato que o front usa.
+export function adaptarProduto(p) {
+  return {
+    id: p.id,
+    name: p.nome_produto,
+    unit: "",
+    price: p.preco / 100,
+    description: p.descricao,
+    imageUrl: p.img_url,
+    category: slugify(p.nome_categoria),
+    categoryName: p.nome_categoria,
+    stock: p.estoque,
+  };
+}
+
+export async function listarProdutos() {
+  const lista = await request("/produtos");
+  return lista.map(adaptarProduto);
+}
