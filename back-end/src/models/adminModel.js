@@ -15,7 +15,7 @@ const CAMPOS_PRODUTO = [
 ];
 
 const PRODUTO_SELECT = `SELECT p.id, p.nome_produto, p.descricao, p.img_url, p.preco, p.preco_anterior, p.unidade, p.estoque,
-  p.id_categoria, c.nome_categoria, s.nome_situacao AS situacao
+  p.id_categoria, c.nome_categoria, c.status AS categoria_ativa, s.nome_situacao AS situacao
   FROM produto p
   JOIN categoria c ON c.id = p.id_categoria
   JOIN situacao s ON s.id = p.id_situacao`;
@@ -34,17 +34,17 @@ async function listarProdutos() {
   return r.rows;
 }
 
-async function buscarProduto(id) {
-  const r = await db.execute({
+async function buscarProduto(id, executor = db) {
+  const r = await executor.execute({
     sql: `${PRODUTO_SELECT} WHERE p.id = ?`,
     args: [id],
   });
   return r.rows[0];
 }
 
-async function criarProduto(p) {
-  const situacaoId = await idSituacao(p.situacao ?? "Ativo");
-  const r = await db.execute({
+async function criarProduto(p, executor = db) {
+  const situacaoId = await idSituacao(p.situacao ?? "Ativo", executor);
+  const r = await executor.execute({
     sql: `INSERT INTO produto (nome_produto, descricao, img_url, preco, preco_anterior, unidade, estoque, id_categoria, id_situacao)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
@@ -62,7 +62,7 @@ async function criarProduto(p) {
   return Number(r.lastInsertRowid);
 }
 
-async function atualizarProduto(id, campos, situacao) {
+async function atualizarProduto(id, campos, situacao, executor = db) {
   const sets = [];
   const args = [];
   for (const c of CAMPOS_PRODUTO) {
@@ -73,34 +73,47 @@ async function atualizarProduto(id, campos, situacao) {
   }
   if (situacao) {
     sets.push("id_situacao = ?");
-    args.push(await idSituacao(situacao));
+    args.push(await idSituacao(situacao, executor));
   }
   if (sets.length === 0) return;
   args.push(id);
-  await db.execute({
+  await executor.execute({
     sql: `UPDATE produto SET ${sets.join(", ")} WHERE id = ?`,
     args,
   });
 }
 
+async function arquivarProduto(produto, executor) {
+  const inativo = await idSituacao("Inativo", executor);
+  // A vitrine considera estes cinco campos ao reunir fichas equivalentes.
+  const { rows } = await executor.execute({
+    sql: `UPDATE produto SET id_situacao = ?
+          WHERE id_categoria = ? AND nome_produto COLLATE BINARY = ?
+            AND descricao COLLATE BINARY = ? AND unidade = ? AND img_url = ?
+          RETURNING id`,
+    args: [inativo, produto.id_categoria, produto.nome_produto, produto.descricao, produto.unidade, produto.img_url],
+  });
+  return rows.map(({ id }) => id);
+}
+
 // ---------- categorias ----------
-async function buscarCategoria(id) {
-  const r = await db.execute({
+async function buscarCategoria(id, executor = db) {
+  const r = await executor.execute({
     sql: "SELECT id, nome_categoria, id_categoria_pai, status FROM categoria WHERE id = ?",
     args: [id],
   });
   return r.rows[0];
 }
 
-async function criarCategoria({ nome_categoria, id_categoria_pai }) {
-  const r = await db.execute({
+async function criarCategoria({ nome_categoria, id_categoria_pai }, executor = db) {
+  const r = await executor.execute({
     sql: "INSERT INTO categoria (nome_categoria, id_categoria_pai) VALUES (?, ?)",
     args: [nome_categoria, id_categoria_pai ?? null],
   });
   return Number(r.lastInsertRowid);
 }
 
-async function atualizarCategoria(id, { nome_categoria, status }) {
+async function atualizarCategoria(id, { nome_categoria, status }, executor = db) {
   const sets = [];
   const args = [];
   if (nome_categoria !== undefined) {
@@ -113,10 +126,22 @@ async function atualizarCategoria(id, { nome_categoria, status }) {
   }
   if (sets.length === 0) return;
   args.push(id);
-  await db.execute({
+  await executor.execute({
     sql: `UPDATE categoria SET ${sets.join(", ")} WHERE id = ?`,
     args,
   });
+}
+
+async function temDependentesAtivos(id, executor) {
+  const { rows } = await executor.execute({
+    sql: `SELECT 1 FROM categoria WHERE id_categoria_pai = ? AND status = 1
+          UNION ALL
+          SELECT 1 FROM produto p JOIN situacao s ON s.id = p.id_situacao
+            WHERE p.id_categoria = ? AND s.nome_situacao = 'Ativo'
+          LIMIT 1`,
+    args: [id, id],
+  });
+  return rows.length > 0;
 }
 
 // ---------- pedidos ----------
@@ -178,10 +203,12 @@ module.exports = {
   buscarProduto,
   criarProduto,
   atualizarProduto,
+  arquivarProduto,
   listarCategorias,
   buscarCategoria,
   criarCategoria,
   atualizarCategoria,
+  temDependentesAtivos,
   listarPedidos,
   buscarPedido,
   resumoPedidos,

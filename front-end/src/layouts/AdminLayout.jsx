@@ -34,7 +34,7 @@ function AdminArea({ admin }) {
     const options = { token, signal: controller.signal };
     Promise.all(["produtos", "categorias", "pedidos"].map((path) => request(`/admin/${path}`, options)))
       .then(([produtos, categories, orders]) => {
-        setData({ rows: produtos.map(adaptarProduto), categories, orders });
+        if (!controller.signal.aborted) setData({ rows: produtos.map(adaptarProduto), categories, orders });
       })
       .catch((erro) => {
         if (controller.signal.aborted) return;
@@ -65,7 +65,28 @@ function AdminArea({ admin }) {
   }
 
   async function saveCategory(id, payload) {
-    await mutate(id ? `categorias/${id}` : "categorias", id ? "PUT" : "POST", payload);
+    const categoria = await mutate(id ? `categorias/${id}` : "categorias", id ? "PUT" : "POST", payload);
+    setData((v) => ({
+      ...v, categories: id ? v.categories.map((row) => row.id === id ? categoria : row) : [...v.categories, categoria],
+    }));
+    setRevision((v) => v + 1);
+    refreshProducts();
+  }
+
+  async function deleteProduct(id) {
+    const { ids } = await mutate(`produtos/${id}`, "DELETE");
+    setData((v) => ({
+      ...v, rows: v.rows.map((row) => ids.includes(row.id) ? { ...row, active: false } : row),
+    }));
+    setRevision((v) => v + 1);
+    refreshProducts();
+  }
+
+  async function deleteCategory(id) {
+    const categoria = await mutate(`categorias/${id}`, "DELETE");
+    setData((v) => ({
+      ...v, categories: v.categories.map((row) => row.id === id ? categoria : row),
+    }));
     setRevision((v) => v + 1);
     refreshProducts();
   }
@@ -120,7 +141,7 @@ function AdminArea({ admin }) {
               <Button onClick={() => { setError(""); setRevision((v) => v + 1); }}>Tentar novamente</Button>
             </div>
           ) : data ? (
-            <Outlet context={{ ...data, categoryNames, saveProduct, saveCategory, setOrderStatus }} />
+            <Outlet context={{ ...data, categoryNames, saveProduct, saveCategory, deleteProduct, deleteCategory, setOrderStatus }} />
           ) : <p role="status">Carregando painel…</p>}
         </section>
       </div>

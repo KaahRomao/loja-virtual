@@ -36,7 +36,7 @@ async function webhook(req, res) {
   }
 }
 
-async function sincronizar(req, res) {
+async function sincronizar(req, res, next) {
   try {
     const { payment_id: id, pedido_id } = req.body ?? {};
     if (id !== undefined && !/^\d+$/.test(String(id))) {
@@ -55,8 +55,7 @@ async function sincronizar(req, res) {
   } catch (erro) {
     if (erro.codigo === "MP_NAO_CONFIGURADO") return res.status(503).json({ erro: erro.message });
     if (erro.codigo === "MP_INDISPONIVEL") return res.status(502).json({ erro: erro.message });
-    console.error(erro);
-    return res.status(500).json({ erro: "Erro interno do servidor" });
+    return next(erro);
   }
 }
 

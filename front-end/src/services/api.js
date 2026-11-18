@@ -82,6 +82,7 @@ export function adaptarProduto(p) {
     categoryId: p.id_categoria,
     stock: p.estoque,
     active: p.situacao === undefined || p.situacao === "Ativo",
+    categoryActive: p.categoria_ativa !== 0,
   };
 }
 

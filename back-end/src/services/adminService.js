@@ -1,8 +1,9 @@
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const adminModel = require("../models/adminModel");
 const pedidoModel = require("../models/pedidoModel");
 const pedidoService = require("./pedidoService");
+const { emitirToken } = require("./tokenService");
+const db = require("../database/connection");
 
 function erroDeNegocio(codigo, mensagem) {
   const erro = new Error(mensagem);
@@ -25,23 +26,20 @@ async function login({ email, senha }) {
     throw erroDeNegocio("CREDENCIAIS_INVALIDAS", "Email ou senha inválidos");
   }
 
-  const token = jwt.sign(
-    { id: admin.id, tipo: "admin" },
-    process.env.JWT_SECRET,
-    {
-      expiresIn: "2h",
-    },
-  );
   return {
-    token,
+    token: emitirToken(admin.id, "admin"),
     role: "admin",
     admin: { id: admin.id, nome: admin.nome, email: admin.email },
   };
 }
 
-async function exigirCategoria(id) {
-  if (!(await adminModel.buscarCategoria(id))) {
+async function exigirCategoriaAtiva(id, tx) {
+  const categoria = await adminModel.buscarCategoria(id, tx);
+  if (!categoria) {
     throw erroDeNegocio("CATEGORIA_INVALIDA", `Categoria ${id} não existe`);
+  }
+  if (categoria.status !== 1) {
+    throw erroDeNegocio("CONFLITO", "Restaure a categoria antes de publicar um item nela.");
   }
 }
 
@@ -53,36 +51,60 @@ function validarOferta(preco, anterior) {
 
 async function criarProduto(dados) {
   validarOferta(dados.preco, dados.preco_anterior);
-  await exigirCategoria(dados.id_categoria);
-  const id = await adminModel.criarProduto(dados);
-  return adminModel.buscarProduto(id);
+  return db.transaction(async (tx) => {
+    await exigirCategoriaAtiva(dados.id_categoria, tx);
+    const id = await adminModel.criarProduto(dados, tx);
+    return adminModel.buscarProduto(id, tx);
+  });
 }
 
-async function atualizarProduto(id, dados) {
-  const produto = await adminModel.buscarProduto(id);
-  if (!produto) {
-    throw erroDeNegocio("PRODUTO_NAO_ENCONTRADO", "Produto não encontrado");
-  }
-  if (dados.id_categoria !== undefined)
-    await exigirCategoria(dados.id_categoria);
-  validarOferta(dados.preco ?? produto.preco, dados.preco_anterior === undefined ? produto.preco_anterior : dados.preco_anterior);
-  await adminModel.atualizarProduto(id, dados, dados.situacao);
-  return adminModel.buscarProduto(id);
+async function produtoExistente(id, tx) {
+  const produto = await adminModel.buscarProduto(id, tx);
+  if (!produto) throw erroDeNegocio("PRODUTO_NAO_ENCONTRADO", "Produto não encontrado");
+  return produto;
 }
 
-async function criarCategoria(dados) {
-  if (dados.id_categoria_pai != null)
-    await exigirCategoria(dados.id_categoria_pai);
-  const id = await adminModel.criarCategoria(dados);
-  return adminModel.buscarCategoria(id);
+function atualizarProduto(id, dados) {
+  return db.transaction(async (tx) => {
+    const produto = await produtoExistente(id, tx);
+    const categoriaId = dados.id_categoria ?? produto.id_categoria;
+    if (categoriaId !== produto.id_categoria || dados.situacao === "Ativo") {
+      await exigirCategoriaAtiva(categoriaId, tx);
+    }
+    validarOferta(dados.preco ?? produto.preco, dados.preco_anterior === undefined ? produto.preco_anterior : dados.preco_anterior);
+    await adminModel.atualizarProduto(id, dados, dados.situacao, tx);
+    return adminModel.buscarProduto(id, tx);
+  });
 }
 
-async function atualizarCategoria(id, dados) {
-  if (!(await adminModel.buscarCategoria(id))) {
-    throw erroDeNegocio("CATEGORIA_NAO_ENCONTRADA", "Categoria não encontrada");
-  }
-  await adminModel.atualizarCategoria(id, dados);
-  return adminModel.buscarCategoria(id);
+function excluirProduto(id) {
+  return db.transaction(async (tx) => {
+    const produto = await produtoExistente(id, tx);
+    return { ids: await adminModel.arquivarProduto(produto, tx) };
+  });
+}
+
+function criarCategoria(dados) {
+  return db.transaction(async (tx) => {
+    if (dados.id_categoria_pai != null) await exigirCategoriaAtiva(dados.id_categoria_pai, tx);
+    const id = await adminModel.criarCategoria(dados, tx);
+    return adminModel.buscarCategoria(id, tx);
+  });
+}
+
+function atualizarCategoria(id, dados) {
+  return db.transaction(async (tx) => {
+    const categoria = await adminModel.buscarCategoria(id, tx);
+    if (!categoria) throw erroDeNegocio("CATEGORIA_NAO_ENCONTRADA", "Categoria não encontrada");
+    if (dados.status === 0 && categoria.status === 1 && await adminModel.temDependentesAtivos(id, tx)) {
+      throw erroDeNegocio("CONFLITO", "Mova ou exclua os produtos e as subcategorias ativas antes de excluir esta categoria.");
+    }
+    if (dados.status === 1 && categoria.id_categoria_pai != null) {
+      await exigirCategoriaAtiva(categoria.id_categoria_pai, tx);
+    }
+    await adminModel.atualizarCategoria(id, dados, tx);
+    return adminModel.buscarCategoria(id, tx);
+  });
 }
 
 async function alterarSituacaoPedido(id, nova) {
@@ -108,6 +130,7 @@ module.exports = {
   login,
   criarProduto,
   atualizarProduto,
+  excluirProduto,
   criarCategoria,
   atualizarCategoria,
   alterarSituacaoPedido,

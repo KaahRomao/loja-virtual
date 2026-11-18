@@ -1,6 +1,6 @@
 const clienteService = require("../services/clienteService");
 
-async function cadastrar(req, res) {
+async function cadastrar(req, res, next) {
   try {
     const { nome_cliente, email, senha, telefone } = req.body ?? {};
 
@@ -45,8 +45,7 @@ async function cadastrar(req, res) {
     ) {
       return res.status(409).json({ erro: "Email já cadastrado" });
     }
-    console.error(erro);
-    res.status(500).json({ erro: "Erro interno do servidor" });
+    return next(erro);
   }
 }
 

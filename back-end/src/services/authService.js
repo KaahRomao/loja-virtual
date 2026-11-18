@@ -1,7 +1,7 @@
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const clienteModel = require("../models/clienteModel");
 const adminService = require("./adminService");
+const { emitirToken } = require("./tokenService");
 
 async function login({ email, senha }) {
   const cliente = await clienteModel.buscarPorEmail(email);
@@ -12,16 +12,8 @@ async function login({ email, senha }) {
 
   if (!cliente || cliente.status !== 1 || !senhaConfere) return adminService.login({ email, senha });
 
-  const token = jwt.sign(
-    { id: cliente.id, tipo: "cliente" },
-    process.env.JWT_SECRET,
-    {
-      expiresIn: "2h",
-    },
-  );
-
   return {
-    token,
+    token: emitirToken(cliente.id, "cliente"),
     role: "cliente",
     cliente: {
       id: cliente.id,
