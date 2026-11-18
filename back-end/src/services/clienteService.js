@@ -1,7 +1,7 @@
 const bcrypt = require("bcryptjs");
 const clienteModel = require("../models/clienteModel");
 
-async function cadastrar({ nome_cliente, email, senha }) {
+async function cadastrar({ nome_cliente, email, senha, telefone }) {
   const existente = await clienteModel.buscarPorEmail(email);
 
   if (existente) {
@@ -12,7 +12,7 @@ async function cadastrar({ nome_cliente, email, senha }) {
 
   const senhaHash = await bcrypt.hash(senha, 10);
 
-  return clienteModel.criar({ nome_cliente, email, senha: senhaHash });
+  return clienteModel.criar({ nome_cliente, email, senha: senhaHash, telefone });
 }
 
 module.exports = { cadastrar };

@@ -1,6 +1,8 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const adminModel = require("../models/adminModel");
+const mercadoPago = require("./mercadoPagoService");
+const pagamentos = require("./pagamentoService");
 
 function erroDeNegocio(codigo, mensagem) {
   const erro = new Error(mensagem);
@@ -43,18 +45,27 @@ async function exigirCategoria(id) {
   }
 }
 
+function validarOferta(preco, anterior) {
+  if (anterior != null && anterior <= preco) {
+    throw erroDeNegocio("PRECO_INVALIDO", "O preço anterior deve ser maior que o atual");
+  }
+}
+
 async function criarProduto(dados) {
+  validarOferta(dados.preco, dados.preco_anterior);
   await exigirCategoria(dados.id_categoria);
   const id = await adminModel.criarProduto(dados);
   return adminModel.buscarProduto(id);
 }
 
 async function atualizarProduto(id, dados) {
-  if (!(await adminModel.buscarProduto(id))) {
+  const produto = await adminModel.buscarProduto(id);
+  if (!produto) {
     throw erroDeNegocio("PRODUTO_NAO_ENCONTRADO", "Produto não encontrado");
   }
   if (dados.id_categoria !== undefined)
     await exigirCategoria(dados.id_categoria);
+  validarOferta(dados.preco ?? produto.preco, dados.preco_anterior === undefined ? produto.preco_anterior : dados.preco_anterior);
   await adminModel.atualizarProduto(id, dados, dados.situacao);
   return adminModel.buscarProduto(id);
 }
@@ -85,7 +96,22 @@ async function alterarSituacaoPedido(id, nova) {
       `Pedido ${pedido.situacao} não pode ir para ${nova}`,
     );
   }
-  await adminModel.alterarSituacaoPedido(id, pedido.situacao, nova);
+  let preferenciaVerificada = null;
+  if (nova === "Cancelado") {
+    const checkout = adminModel.buscarCheckout(id);
+    if (checkout?.preferencia_id) {
+      const expirada = await mercadoPago.preferenciaExpirada(checkout.preferencia_id, checkout.referencia_pagamento);
+      if (!expirada) {
+        throw erroDeNegocio("CONFLITO", "O link de pagamento ainda está ativo. Encerre a preferência antes de cancelar o pedido.");
+      }
+      const sincronizacao = await pagamentos.processarPagamento(undefined, checkout.id_cliente, id);
+      if (sincronizacao?.pagamento_em_curso) {
+        throw erroDeNegocio("CONFLITO", "Há um pagamento pendente ou aprovado para este pedido.");
+      }
+      preferenciaVerificada = checkout.preferencia_id;
+    }
+  }
+  adminModel.alterarSituacaoPedido(id, pedido.situacao, nova, preferenciaVerificada);
   return adminModel.buscarPedido(id);
 }
 

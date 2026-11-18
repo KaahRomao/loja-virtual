@@ -1,0 +1,25 @@
+Bloco;Cenário;Esperado;Resultado
+Correção;Lint e build do front-end após remover conflito;Build e lint sem erro;Aprovado inclusive em instalação limpa com Vite 6.2.7
+SQLite;Criar banco vazio e consultar catálogo;Esquema íntegro e 16 produtos;Aprovado em banco temporário
+API;Buscar por nome e categoria e abrir detalhe;Resultados filtrados e 404 no ID inexistente;Aprovado em HTTP local
+API;Cadastro vazio ou repetido;400 para campo obrigatório e 409 para e-mail repetido;Aprovado em HTTP local
+API;Login com senha incorreta;401;Aprovado em HTTP local
+API;Cliente em rota de admin e admin em rota de cliente;401;Aprovado em HTTP local
+API;Consultar CEP válido inexistente ou indisponível;200 com frete ou erro 404 ou 502;Aprovado com respostas do ViaCEP simuladas
+Back-end;Enviar simultaneamente a mesma chave de checkout;Um pedido e uma baixa no estoque;Aprovado em SQLite temporário
+Back-end;Enviar pedido com estoque insuficiente ou zerado;409;Aprovado em HTTP local
+Back-end;Cancelar pedido pendente;Estoque restaurado;Aprovado em SQLite temporário
+Back-end;Consultar o pedido de outro cliente;404;Aprovado em HTTP local
+Pagamentos;Reaproveitar a preferência ao repetir a solicitação;Uma preferência;Aprovado com SDK simulado
+Pagamentos;Registrar transações pendente recusada e aprovada;Histórico gravado e pedido Pago só após aprovação;Aprovado com SDK simulado
+Pagamentos;Receber evento assinado ou sem assinatura;200 com assinatura válida e 401 sem assinatura;Aprovado em HTTP local com transação simulada
+Front-end;Busca carrinho endereço cadastro pedido e aprovação em 360 px;Fluxo navegável sem rolagem horizontal na página;Aprovado no Firefox com integrações externas simuladas
+Front-end;Recarregar pedido e consultar no painel;Pedido continua acessível e é listado;Aprovado no Firefox com SQLite temporário
+Pagamentos;Compra no Checkout Pro externo com cartão de teste;Aprovação ou recusa real do ambiente de teste;Pendente de execução com credenciais de teste
+SQLite;Abrir cópia do banco legado com o esquema anterior;Novos campos disponíveis e registros preservados;Aprovado em cópia SQLite temporária
+Integração;Consultar o CEP público 01001-000 no ViaCEP;Endereço e UF SP;Aprovado no serviço externo
+API;Reenviar uma chave de checkout com endereço diferente;409 sem duplicar o pedido;Aprovado em HTTP local
+API;Receber resposta incompleta do ViaCEP;502 sem calcular frete com dados inválidos;Aprovado com resposta simulada
+Publicação;Iniciar com variáveis do Render e consultar saúde e catálogo;Porta e CORS corretos e leitura do SQLite;Aprovado em execução local com configuração simulada do Render
+Pagamentos;Cancelar com preferência ativa ou expirada;409 com preferência ativa e devolução de estoque após expiração sem cobrança;Aprovado com SDK simulado
+Pagamentos;Registrar aprovação recebida depois do cancelamento;Pedido segue cancelado com alerta no detalhe administrativo;Aprovado com SDK simulado

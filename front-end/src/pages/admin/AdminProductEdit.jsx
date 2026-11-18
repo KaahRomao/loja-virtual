@@ -1,22 +1,24 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useStore } from "../../hooks/useStore";
+import { Link, useNavigate, useOutletContext } from "react-router-dom";
+import { camposDePreco } from "../../data/products";
 import AdminHeading from "../../components/AdminHeading";
 import ProductPhoto from "../../components/ProductPhoto";
 import Button from "../../components/ui/Button";
-import { cx, formCard, formError, formInput, formLabel, noteBox, pillLink } from "../../components/ui/styles";
+import { cx, formCard, formError, formInput, formLabel, pillLink } from "../../components/ui/styles";
 
 // id = "novo" cadastra um produto; qualquer outro número edita o produto existente
 export default function AdminProductEdit({ id }) {
-  const { rows, setRows, categoryNames } = useStore();
+  const { rows, categories, saveProduct } = useOutletContext();
   const navigate = useNavigate();
   const isNew = id === "novo";
   const row = isNew ? null : rows.find((r) => r.id === Number(id));
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
     name: row?.name || "",
     unit: row?.unit || "",
-    category: row?.category || "comida",
+    category: String(row?.categoryId ?? categories[0]?.id ?? ""),
+    imageUrl: row?.imageUrl || "",
     price: row ? row.price.toFixed(2) : "",
     oldPrice: row?.oldPrice ? row.oldPrice.toFixed(2) : "",
     stock: row ? String(row.stock) : "",
@@ -30,30 +32,28 @@ export default function AdminProductEdit({ id }) {
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value }));
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    const price = parseFloat(form.price.replace(",", "."));
-    const oldPrice = parseFloat(form.oldPrice.replace(",", "."));
-    if (!form.name.trim()) return setError("Informe o nome do produto.");
-    if (isNaN(price) || price <= 0) return setError("Informe um preço válido.");
-    // Aqui você salva o produto no seu back-end.
-    const data = {
-      name: form.name.trim(),
-      unit: form.unit.trim(),
-      category: form.category,
-      price,
-      oldPrice: isNaN(oldPrice) ? undefined : oldPrice,
-      stock: Math.max(0, parseInt(form.stock, 10) || 0),
-      description: form.description,
-      active: form.active,
-    };
-    if (isNew) {
-      const nextId = Math.max(...rows.map((r) => r.id)) + 1;
-      setRows((all) => [...all, { ...data, id: nextId, image: 0 }]);
-    } else {
-      setRows((all) => all.map((r) => (r.id === row.id ? { ...r, ...data } : r)));
+    if (!form.name.trim() || !form.description.trim()) return setError("Informe o nome e a descrição.");
+    if (!form.category) return setError("Selecione uma categoria.");
+    setError("");
+    setBusy(true);
+    try {
+      await saveProduct(row?.id, {
+        ...camposDePreco(form.price.trim(), form.oldPrice.trim(), form.stock.trim()),
+        nome_produto: form.name.trim(),
+        unidade: form.unit.trim(),
+        id_categoria: Number(form.category),
+        img_url: form.imageUrl.trim(),
+        descricao: form.description.trim(),
+        situacao: form.active ? "Ativo" : "Inativo",
+      });
+      navigate("/admin/produtos");
+    } catch (erro) {
+      setError(erro.message);
+    } finally {
+      setBusy(false);
     }
-    navigate("/admin/produtos");
   };
 
   return (
@@ -75,7 +75,7 @@ export default function AdminProductEdit({ id }) {
           <label className={formLabel}>
             Categoria
             <select className={formInput} value={form.category} onChange={set("category")}>
-              {Object.entries(categoryNames).map(([slug, name]) => <option key={slug} value={slug}>{name}</option>)}
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.nome_categoria}</option>)}
             </select>
           </label>
         </div>
@@ -84,14 +84,14 @@ export default function AdminProductEdit({ id }) {
           <label className={formLabel}>Preço "de" (R$)<input className={formInput} inputMode="decimal" placeholder="Sem oferta" value={form.oldPrice} onChange={set("oldPrice")} /></label>
           <label className={formLabel}>Estoque (un.)<input className={formInput} inputMode="numeric" value={form.stock} onChange={set("stock")} /></label>
         </div>
+        <label className={formLabel}>Imagem (URL opcional)<input className={formInput} value={form.imageUrl} onChange={set("imageUrl")} /></label>
         <label className={formLabel}>Descrição<textarea className={formInput} rows={3} value={form.description} onChange={set("description")} /></label>
         <label className="flex items-center gap-2"><input type="checkbox" checked={form.active} onChange={set("active")} /> Mostrar na loja</label>
         {error && <p className={formError}>{error}</p>}
         <div className="mt-1.5 flex flex-wrap justify-between gap-2.5">
           <Link className={pillLink("outline", "md")} to="/admin/produtos">Cancelar</Link>
-          <Button type="submit" size="lg">{isNew ? "Cadastrar produto" : "Salvar alterações"}</Button>
+          <Button type="submit" size="lg" disabled={busy}>{busy ? "Salvando…" : isNew ? "Cadastrar produto" : "Salvar alterações"}</Button>
         </div>
-        <p className={noteBox}>Alterações valem só nesta visita e não mudam a loja do cliente.</p>
       </form>
     </>
   );

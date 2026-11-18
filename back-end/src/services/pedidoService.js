@@ -1,81 +1,40 @@
 const pedidoModel = require("../models/pedidoModel");
 const cepService = require("./cepService");
+const mercadoPago = require("./mercadoPagoService");
 
-function erroDeNegocio(codigo, mensagem) {
-  const erro = new Error(mensagem);
-  erro.codigo = codigo;
-  return erro;
-}
+const preferenciasEmCriacao = new Map();
 
-async function criarPedido({
-  idCliente,
-  itens,
-  endereco_entrega,
-  cep_entrega,
-}) {
-  const endereco = await cepService.consultarCep(cep_entrega);
-  const { valor_frete, prazo_entrega } = cepService.calcularFrete(endereco.uf);
-
+async function criarPedido({ idCliente, itens, endereco_entrega, cep_entrega, chave_checkout }) {
+  const dados = { endereco_entrega, cep_entrega, chave_checkout, id_cliente: idCliente };
   const quantidades = new Map();
   for (const item of itens) {
-    const atual = quantidades.get(item.id_produto) ?? 0;
-    quantidades.set(item.id_produto, atual + item.quantidade);
+    quantidades.set(item.id_produto, (quantidades.get(item.id_produto) ?? 0) + item.quantidade);
   }
+  const existente = pedidoModel.buscarReenvio(dados, quantidades);
+  if (existente) return existente;
 
-  const itensPedido = [];
-  let subtotal = 0;
+  const endereco = await cepService.consultarCep(cep_entrega);
+  const frete = cepService.calcularFrete(endereco.uf);
+  return pedidoModel.gravar({ ...dados, ...frete }, quantidades);
+}
 
-  for (const [idProduto, quantidade] of quantidades) {
-    const produto = await pedidoModel.buscarProdutoAtivo(idProduto);
+async function gerarPreferencia(pedido) {
+  const salva = pedidoModel.buscarPreferencia(pedido.id);
+  if (salva) return salva;
+  if (preferenciasEmCriacao.has(pedido.id)) return preferenciasEmCriacao.get(pedido.id);
 
-    if (!produto) {
-      throw erroDeNegocio(
-        "PRODUTO_INDISPONIVEL",
-        `Produto ${idProduto} não encontrado ou inativo`,
-      );
-    }
+  const referencia = pedidoModel.referenciaPagamento(pedido.id);
+  if (!referencia) return undefined;
 
-    if (produto.estoque < quantidade) {
-      throw erroDeNegocio(
-        "ESTOQUE_INSUFICIENTE",
-        `Estoque insuficiente para "${produto.nome_produto}"`,
-      );
-    }
-
-    itensPedido.push({
-      id_produto: produto.id,
-      nome_produto: produto.nome_produto,
-      quantidade,
-      valor_unitario: produto.preco,
-    });
-    subtotal += produto.preco * quantidade;
-  }
-
-  const valorTotal = subtotal + valor_frete;
-
-  const id = await pedidoModel.gravar(
-    {
-      endereco_entrega,
-      cep_entrega,
-      valor_frete,
-      prazo_entrega,
-      valor_total: valorTotal,
-      id_cliente: idCliente,
-    },
-    itensPedido,
+  const tarefa = mercadoPago.criarPreferencia(pedido, referencia).then((preferencia) =>
+    pedidoModel.salvarPreferencia(pedido.id, preferencia)
   );
-
-  return {
-    id,
-    valor_frete,
-    prazo_entrega,
-    valor_total: valorTotal,
-    itens: itensPedido,
-  };
+  preferenciasEmCriacao.set(pedido.id, tarefa);
+  try {
+    return await tarefa;
+  } finally {
+    preferenciasEmCriacao.delete(pedido.id);
+  }
 }
 
-async function detalharPedido(id, idCliente) {
-  return pedidoModel.buscarPedido(id, idCliente);
-}
-
-module.exports = { criarPedido, detalharPedido };
+module.exports = { criarPedido, detalharPedido: pedidoModel.buscarPedido, gerarPreferencia };

@@ -44,7 +44,7 @@ const benefits = [
 
 export default function Home() {
   const { categoryNames, products } = useStore();
-  const offers = products.slice(0, 4);
+  const offers = products.filter((p) => p.oldPrice).slice(0, 4);
   const favorites = products.slice(4, 8);
 
   return (
@@ -127,7 +127,7 @@ export default function Home() {
             Ver ofertas da semana <ArrowRight className="w-[18px]" />
           </Link>
         </SectionHeading>
-        <ProductGrid items={offers} />
+        {offers.length ? <ProductGrid items={offers} /> : <p className="text-muted-foreground">Nenhuma oferta ativa no momento.</p>}
       </section>
 
       {/* Categorias */}

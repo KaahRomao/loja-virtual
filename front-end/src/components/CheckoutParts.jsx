@@ -2,7 +2,7 @@ import { Check, ShoppingBasket, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useStore } from "../hooks/useStore";
 import { formatPrice } from "../data/products";
-import { cx, noteBox, panel, pillLink } from "./ui/styles";
+import { cx, panel, pillLink } from "./ui/styles";
 
 // Tela/bloco mostrado quando não há nada no carrinho
 export function EmptyCart({ onAction }) {
@@ -11,8 +11,8 @@ export function EmptyCart({ onAction }) {
       <ShoppingBasket size={48} className="m-auto text-primary" />
       <h3 className="mt-[17px] font-display text-[24px] font-medium leading-[normal]">Seu carrinho está vazio</h3>
       <p className="mt-2 mb-6 text-[14px] text-muted-foreground">Que tal encontrar algo gostoso para começar?</p>
-      <Link className={pillLink("primary", "md")} to="/catalogo?ofertas=true" onClick={onAction}>
-        Ver ofertas da semana <ArrowRight size={16} />
+      <Link className={pillLink("primary", "md")} to="/catalogo" onClick={onAction}>
+        Ver catálogo <ArrowRight size={16} />
       </Link>
     </div>
   );
@@ -48,15 +48,15 @@ export function CheckoutSteps({ step }) {
 }
 
 export function OrderSummary() {
-  const { totalItems, total } = useStore();
+  const { totalItems, total, address } = useStore();
+  const frete = address.freight == null ? null : address.freight / 100;
   return (
     <aside className={cx(panel, "grid gap-2.5")}>
       <h2 className="font-display text-[20px] font-semibold leading-[normal]">Resumo</h2>
       <div className="flex justify-between"><span>Itens</span><b>{totalItems}</b></div>
       <div className="flex justify-between"><span>Subtotal</span><b>{formatPrice(total)}</b></div>
-      <div className="flex justify-between"><span>Entrega</span><b className="text-primary">Grátis</b></div>
-      <div className="flex justify-between border-t border-border pt-2.5 text-[18px]"><span>Total</span><b>{formatPrice(total)}</b></div>
-      <p className={noteBox}>Demonstração: nenhum pedido ou pagamento é real.</p>
+      <div className="flex justify-between"><span>Entrega</span><b className="text-primary">{frete === null ? "Calcule pelo CEP" : formatPrice(frete)}</b></div>
+      <div className="flex justify-between border-t border-border pt-2.5 text-[18px]"><span>Total</span><b>{formatPrice(total + (frete ?? 0))}</b></div>
     </aside>
   );
 }

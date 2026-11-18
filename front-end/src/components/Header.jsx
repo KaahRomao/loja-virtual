@@ -94,7 +94,7 @@ export default function Header() {
                 </b>
               </span>
             </Link>
-            <Link className="flex items-center gap-[9px] text-left mobile:hidden" to="/entrar">
+            <Link className="flex items-center gap-[9px] text-left" to="/entrar" aria-label={user ? "Minha conta" : "Entrar ou cadastrar"}>
               <UserRound size={21} />
               <span className="compact:hidden">
                 <small className="block text-[11px] leading-[1.25] text-muted-foreground">

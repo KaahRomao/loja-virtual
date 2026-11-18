@@ -7,7 +7,7 @@ function autenticarAdmin(req, res, next) {
   }
   try {
     const dados = jwt.verify(token, process.env.JWT_SECRET);
-    if (dados.tipo !== "admin") {
+    if (dados.tipo !== "admin" || !Number.isSafeInteger(dados.id)) {
       return res
         .status(401)
         .json({ erro: "Acesso restrito a administradores" });

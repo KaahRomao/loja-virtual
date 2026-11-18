@@ -1,60 +1,57 @@
 import { useState } from "react";
-import { Carrot, Cookie, SprayCan, Pencil } from "lucide-react";
-import { useStore } from "../../hooks/useStore";
+import { Grid2x2, Pencil } from "lucide-react";
+import { useOutletContext } from "react-router-dom";
 import AdminHeading from "../../components/AdminHeading";
 import Button from "../../components/ui/Button";
-import { adminCard, adminCardH2, adminCardTitle, adminTableHead, cx } from "../../components/ui/styles";
-
-const icons = { comida: Carrot, snacks: Cookie, limpeza: SprayCan };
-const cols = "grid grid-cols-[1fr_170px_110px] items-center gap-5 px-[23px] py-[13px] mobile:grid-cols-[1fr_96px]";
+import { adminCard, adminCardH2, adminCardTitle, formError, formInput } from "../../components/ui/styles";
 
 export default function AdminCategories() {
-  const { categoryNames, setCategoryNames, rows } = useStore();
+  const { categories, rows, saveCategory } = useOutletContext();
   const [editing, setEditing] = useState(null);
-  const [value, setValue] = useState("");
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const save = (slug) => {
-    if (value.trim()) setCategoryNames((c) => ({ ...c, [slug]: value.trim() }));
-    setEditing(null);
-  };
+  async function salvar(e) {
+    e.preventDefault();
+    if (!name.trim()) return setError("Informe o nome da categoria.");
+    setBusy(true);
+    setError("");
+    try {
+      await saveCategory(editing, { nome_categoria: name.trim() });
+      setEditing(null);
+      setName("");
+    } catch (erro) {
+      setError(erro.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <>
       <AdminHeading eyebrow="GERENCIAMENTO" title="Categorias" text="Organize as seções do catálogo VORA." />
       <div className={adminCard}>
-        <div className={adminCardTitle}>
-          <h2 className={adminCardH2}>Categorias cadastradas</h2>
-          <span className="text-[12px] text-muted-foreground mobile:hidden">Alterações visíveis somente nesta visita</span>
-        </div>
-        <div className={cx(cols, adminTableHead, "mobile:[&>:nth-child(2)]:hidden")}>
-          <span>Categoria</span><span>Produtos</span><span>Ações</span>
-        </div>
-        {Object.entries(categoryNames).map(([slug, name]) => {
-          const Icon = icons[slug];
-          return (
-            <div className={cx(cols, "min-h-[77px] border-t border-border")} key={slug}>
-              <div className="flex items-center gap-3">
-                <span className="grid size-[42px] place-items-center rounded-[5px] bg-pale text-[24px]"><Icon /></span>
-                {editing === slug ? (
-                  <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save(slug)} />
-                ) : (
-                  <span>
-                    <b className="block">{name}</b>
-                    <small className="block text-[12px] text-muted-foreground">/{slug}</small>
-                  </span>
-                )}
-              </div>
-              <span className="text-[12px] text-muted-foreground mobile:hidden">{rows.filter((r) => r.category === slug).length} produtos</span>
-              {editing === slug ? (
-                <Button size="sm" onClick={() => save(slug)}>Salvar</Button>
-              ) : (
-                <Button variant="outline" size="sm" onClick={() => { setEditing(slug); setValue(name); }}>
-                  <Pencil size={16} /> Editar
-                </Button>
-              )}
-            </div>
-          );
-        })}
+        <div className={adminCardTitle}><h2 className={adminCardH2}>Categorias cadastradas</h2></div>
+        {categories.map((c) => (
+          <div className="flex flex-wrap items-center gap-3 border-t border-border px-5 py-3" key={c.id}>
+            <Grid2x2 size={20} className="text-primary" />
+            <b>{c.nome_categoria}</b>
+            <span className="grow text-sm text-muted-foreground">{rows.filter((r) => r.categoryId === c.id).length} produtos</span>
+            <Button variant="outline" size="sm" onClick={() => { setEditing(c.id); setName(c.nome_categoria); }}>
+              <Pencil size={16} /> Editar
+            </Button>
+          </div>
+        ))}
+        <form className="grid gap-2 px-5 py-4" onSubmit={salvar}>
+          <label htmlFor="nome-categoria"><b>{editing ? "Editar categoria" : "Nova categoria"}</b></label>
+          <div className="flex flex-wrap gap-2">
+            <input id="nome-categoria" className={formInput} value={name} onChange={(e) => setName(e.target.value)} />
+            <Button type="submit" disabled={busy}>{busy ? "Salvando…" : "Salvar"}</Button>
+            {editing && <Button variant="outline" onClick={() => { setEditing(null); setName(""); }}>Cancelar</Button>}
+          </div>
+          {error && <p className={formError} role="alert">{error}</p>}
+        </form>
       </div>
     </>
   );

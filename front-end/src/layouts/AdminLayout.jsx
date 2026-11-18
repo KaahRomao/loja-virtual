@@ -1,22 +1,31 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LayoutDashboard, Package, ClipboardList, Grid2x2, Store, LogOut } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useStore } from "../hooks/useStore";
 import { logoImage } from "../assets";
+import { adaptarProduto, request, slugify } from "../services/api";
 import Button from "../components/ui/Button";
-import { cx, crumbLink, eyebrow, formInput, formLabel, noteBox } from "../components/ui/styles";
+import { cx, crumbLink, eyebrow, formError, formInput, formLabel } from "../components/ui/styles";
 
 function AdminLogin() {
-  const { setAdminSignedIn } = useStore();
-  const [user, setUser] = useState("");
+  const { login } = useStore();
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const submit = (e) => {
+  async function submit(e) {
     e.preventDefault();
-    // Aqui você valida o administrador no seu back-end.
-    if (user.trim().length < 3) return setError("Digite seu usuário de administrador.");
-    setAdminSignedIn(true);
-  };
+    setError("");
+    setBusy(true);
+    try {
+      await login("admin", email, senha);
+    } catch (erro) {
+      setError(erro.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="grid min-h-screen place-items-center bg-deep p-5">
@@ -29,16 +38,15 @@ function AdminLogin() {
         <span className={eyebrow}>ÁREA RESTRITA</span>
         <h1 className="font-display text-[28px] font-bold leading-[normal] text-deep">Entrar como administrador</h1>
         <label className={formLabel}>
-          Usuário
-          <input className={formInput} placeholder="ex.: gerente" value={user} onChange={(e) => setUser(e.target.value)} />
+          E-mail
+          <input className={formInput} type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
         <label className={formLabel}>
           Senha
-          <input className={formInput} type="password" placeholder="Qualquer senha (demonstração)" />
+          <input className={formInput} type="password" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} />
         </label>
         {error && <p className="mt-1.5 text-[13px] font-bold text-destructive">{error}</p>}
-        <Button type="submit" size="lg">Entrar no painel</Button>
-        <p className={noteBox}>Demonstração: não há verificação de senha real.</p>
+        <Button type="submit" size="lg" disabled={busy}>{busy ? "Entrando…" : "Entrar no painel"}</Button>
         <Link className={crumbLink} to="/">← Voltar para a loja</Link>
       </form>
     </div>
@@ -55,10 +63,65 @@ const links = [
 const navLink = "flex w-full cursor-pointer items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[14px] font-bold tablet:w-auto";
 
 export default function AdminLayout() {
-  const { adminSignedIn, setAdminSignedIn } = useStore();
+  const { admin } = useStore();
+  return admin ? <AdminArea key={admin.token} admin={admin} /> : <AdminLogin />;
+}
+
+function AdminArea({ admin }) {
+  const { logout, refreshProducts } = useStore();
   const { pathname } = useLocation();
 
-  if (!adminSignedIn) return <AdminLogin />;
+  const [data, setData] = useState(null);
+  const [error, setError] = useState("");
+  const [revision, setRevision] = useState(0);
+  const { token } = admin;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const options = { token, signal: controller.signal };
+    Promise.all(["produtos", "categorias", "pedidos"].map((path) => request(`/admin/${path}`, options)))
+      .then(([produtos, categories, orders]) => {
+        setData({ rows: produtos.map(adaptarProduto), categories, orders });
+      })
+      .catch((erro) => {
+        if (!controller.signal.aborted) setError(erro.message);
+      });
+    return () => controller.abort();
+  }, [token, revision, pathname]);
+
+  async function mutate(path, method, body) {
+    try {
+      return await request(`/admin/${path}`, { token, method, body });
+    } catch (erro) {
+      if (erro.status === 401) logout("admin");
+      throw erro;
+    }
+  }
+
+  async function saveProduct(id, payload) {
+    const produto = await mutate(id ? `produtos/${id}` : "produtos", id ? "PUT" : "POST", payload);
+    const row = adaptarProduto(produto);
+    setData((v) => ({
+      ...v,
+      rows: id ? v.rows.map((r) => r.id === id ? row : r) : [...v.rows, row],
+    }));
+    refreshProducts();
+    return row;
+  }
+
+  async function saveCategory(id, payload) {
+    await mutate(id ? `categorias/${id}` : "categorias", id ? "PUT" : "POST", payload);
+    setRevision((v) => v + 1);
+    refreshProducts();
+  }
+
+  async function setOrderStatus(id, situacao) {
+    const pedido = await mutate(`pedidos/${id}/situacao`, "PATCH", { situacao });
+    setData((v) => ({ ...v, orders: v.orders.map((o) => o.id === id ? { ...o, situacao: pedido.situacao } : o) }));
+    refreshProducts();
+  }
+
+  const categoryNames = Object.fromEntries((data?.categories ?? []).map((c) => [slugify(c.nome_categoria), c.nome_categoria]));
 
   const isActive = (to) => (to === "/admin" ? pathname === "/admin" : pathname.startsWith(to));
 
@@ -67,7 +130,7 @@ export default function AdminLayout() {
       <aside className="sticky top-0 flex h-screen flex-col gap-3.5 bg-deep px-4 py-[22px] text-primary-foreground tablet:static tablet:h-auto tablet:flex-row tablet:flex-wrap tablet:items-center">
         <img className="rounded-[12px] bg-card px-2.5 py-1.5" width="140" height="44" alt="VORA" src={logoImage} />
         <span className="self-start rounded-[20px] border border-white/30 px-3 py-[7px] text-[11px] text-primary-foreground">
-          Modo demonstração
+          {admin.name}
         </span>
         <nav className="mt-2.5 grid gap-1 tablet:m-0 tablet:flex tablet:flex-wrap">
           {links.map(({ to, label, icon: Icon }) => (
@@ -88,7 +151,7 @@ export default function AdminLayout() {
           <button
             type="button"
             className={cx(navLink, "opacity-80 hover:bg-white/8 hover:opacity-100")}
-            onClick={() => setAdminSignedIn(false)}
+            onClick={() => logout("admin")}
           >
             <LogOut size={18} />Sair
           </button>
@@ -96,7 +159,14 @@ export default function AdminLayout() {
       </aside>
       <main className="min-w-0 px-[clamp(16px,3vw,40px)] pt-8 pb-[60px]">
         <section>
-          <Outlet />
+          {error ? (
+            <div className="grid justify-items-start gap-3">
+              <p className={formError} role="alert">{error}</p>
+              <Button onClick={() => { setError(""); setRevision((v) => v + 1); }}>Tentar novamente</Button>
+            </div>
+          ) : data ? (
+            <Outlet context={{ ...data, categoryNames, saveProduct, saveCategory, setOrderStatus }} />
+          ) : <p role="status">Carregando painel…</p>}
         </section>
       </main>
     </div>

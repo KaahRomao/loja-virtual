@@ -3,6 +3,7 @@ import { Trash2, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useStore } from "../hooks/useStore";
 import { formatPrice, formatZip, validateZip } from "../data/products";
+import { consultarCep, dadosDoCep } from "../services/api";
 import ProductPhoto from "../components/ProductPhoto";
 import QuantityStepper from "../components/QuantityStepper";
 import Button from "../components/ui/Button";
@@ -14,11 +15,21 @@ export default function Cart() {
   const [zip, setZip] = useState(address.zip ? formatZip(address.zip) : "");
   const [feedback, setFeedback] = useState(null);
 
-  const calc = () => {
+  const [busy, setBusy] = useState(false);
+  const calc = async () => {
     const err = validateZip(zip);
     if (err) return setFeedback({ error: true, text: err });
-    setAddress((a) => ({ ...a, zip: zip.replace(/\D/g, "") }));
-    setFeedback({ error: false, text: "Boa notícia! A entrega para o seu CEP é grátis." });
+    setBusy(true);
+    setFeedback(null);
+    try {
+      const cotacao = await consultarCep(zip);
+      setAddress((a) => ({ ...a, ...dadosDoCep(cotacao) }));
+      setFeedback({ error: false, text: `Entrega em até ${cotacao.prazo_entrega} dias úteis.` });
+    } catch (erro) {
+      setFeedback({ error: true, text: erro.message });
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -44,6 +55,7 @@ export default function Cart() {
                 </div>
                 <QuantityStepper
                   value={item.qty}
+                  max={item.stock}
                   label={item.name}
                   onMinus={() => setQuantity(item.id, -1)}
                   onPlus={() => setQuantity(item.id, 1)}
@@ -62,11 +74,12 @@ export default function Cart() {
                   id="cep"
                   inputMode="numeric"
                   placeholder="00000-000"
+                  disabled={busy}
                   value={zip}
                   maxLength={9}
-                  onChange={(e) => setZip(formatZip(e.target.value))}
+                  onChange={(e) => { setZip(formatZip(e.target.value)); setFeedback(null); }}
                 />
-                <Button variant="outline" size="md" onClick={calc}>Calcular</Button>
+                <Button variant="outline" size="md" onClick={calc} disabled={busy}>{busy ? "Consultando…" : "Calcular"}</Button>
               </div>
               {feedback && (
                 <p className={feedback.error ? formError : "bg-pale px-6 py-3 text-[13px]"}>{feedback.text}</p>

@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { Plus, PackageCheck, Tag, TriangleAlert, PackageX, Search, Pencil, X } from "lucide-react";
-import { Link } from "react-router-dom";
-import { useStore } from "../../hooks/useStore";
-import { formatPrice, stockStatus, stockLabels } from "../../data/products";
+import { Link, useOutletContext } from "react-router-dom";
+import { camposDePreco, formatPrice, stockStatus, stockLabels } from "../../data/products";
 import AdminHeading from "../../components/AdminHeading";
 import ProductPhoto from "../../components/ProductPhoto";
 import Button from "../../components/ui/Button";
 import {
   adminCard, adminCardH2, adminCardTitle, adminFilterField, adminStat, adminTableHead,
-  crumbLink, cx, pillLink, statusPill, stockTone,
+  crumbLink, cx, formError, pillLink, statusPill, stockTone,
 } from "../../components/ui/styles";
 
 const modalLabel = "grid gap-[7px] text-[13px] font-extrabold";
@@ -29,18 +28,25 @@ function QuickEdit({ row, onClose, onSave }) {
   });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value }));
 
-  const save = () => {
-    const price = parseFloat(form.price.replace(",", "."));
-    const oldPrice = parseFloat(form.oldPrice.replace(",", "."));
-    onSave({
-      ...row,
-      name: form.name.trim() || row.name,
-      price: isNaN(price) ? row.price : price,
-      oldPrice: isNaN(oldPrice) ? undefined : oldPrice,
-      stock: Math.max(0, parseInt(form.stock, 10) || 0),
-      active: form.active,
-    });
-  };
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    setError("");
+    setBusy(true);
+    try {
+      if (!form.name.trim()) throw new Error("Informe o nome do produto.");
+      await onSave({
+        ...camposDePreco(form.price.trim(), form.oldPrice.trim(), form.stock.trim()),
+        nome_produto: form.name.trim(),
+        situacao: form.active ? "Ativo" : "Inativo",
+      });
+    } catch (erro) {
+      setError(erro.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[oklch(16%_.02_175/.52)] p-5" onClick={onClose}>
@@ -64,9 +70,10 @@ function QuickEdit({ row, onClose, onSave }) {
         <label className="flex items-center gap-[7px] text-[13px] font-extrabold">
           <input className={cx(modalInput, "w-auto")} type="checkbox" checked={form.active} onChange={set("active")} /> Mostrar na loja
         </label>
+        {error && <p className={formError} role="alert">{error}</p>}
         <div className="mt-[25px] flex justify-end gap-[9px]">
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={save}>Salvar alteração</Button>
+          <Button onClick={save} disabled={busy}>{busy ? "Salvando…" : "Salvar alteração"}</Button>
         </div>
       </div>
     </div>
@@ -74,7 +81,7 @@ function QuickEdit({ row, onClose, onSave }) {
 }
 
 export default function AdminProducts() {
-  const { rows, setRows, categoryNames } = useStore();
+  const { rows, saveProduct, categoryNames } = useOutletContext();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("todos");
   const [status, setStatus] = useState("todos");
@@ -110,7 +117,7 @@ export default function AdminProducts() {
           <div className={adminCardTitle}>
             <h2 className={adminCardH2}>Produtos</h2>
             <span className="text-[12px] text-muted-foreground mobile:hidden">
-              Alterações visíveis somente nesta visita · <Link className={crumbLink} to="/admin/produtos/novo">+ Novo produto</Link>
+              <Link className={crumbLink} to="/admin/produtos/novo">+ Novo produto</Link>
             </span>
           </div>
           <div className="flex flex-wrap gap-2.5 px-[23px] pb-4">
@@ -165,8 +172,8 @@ export default function AdminProducts() {
         <QuickEdit
           row={editing}
           onClose={() => setEditing(null)}
-          onSave={(updated) => {
-            setRows((all) => all.map((x) => (x.id === updated.id ? updated : x)));
+          onSave={async (campos) => {
+            await saveProduct(editing.id, campos);
             setEditing(null);
           }}
         />

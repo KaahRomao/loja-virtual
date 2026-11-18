@@ -1,0 +1,187 @@
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const { mkdtempSync, rmSync } = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join } = require("node:path");
+const { once } = require("node:events");
+const { DatabaseSync } = require("node:sqlite");
+const { createHmac, randomUUID } = require("node:crypto");
+const bcrypt = require("bcryptjs");
+const { Payment, Preference } = require("mercadopago");
+
+test("API local com SQLite e respostas de teste das integrações", async (t) => {
+  const pasta = mkdtempSync(join(tmpdir(), "vora-teste-"));
+  process.env.DB_PATH = join(pasta, "vora.sqlite");
+  process.env.JWT_SECRET = randomUUID();
+  process.env.MP_TEST_ACCESS_TOKEN = "fixture";
+  process.env.MP_WEBHOOK_SECRET = randomUUID();
+  process.env.MP_RETURN_URL = "https://loja.example.invalid";
+
+  const db = require("../src/database/connection");
+  db.execute({
+    sql: "INSERT INTO administrador(nome,email,senha) VALUES (?,?,?)",
+    args: ["Admin teste", "admin@example.invalid", await bcrypt.hash("senha-teste", 4)],
+  });
+
+  const enviar = globalThis.fetch;
+  t.mock.method(globalThis, "fetch", (url, ...options) => {
+    if (!String(url).startsWith("https://viacep.com.br/")) return enviar(url, ...options);
+    if (String(url).includes("11111111")) return Promise.reject(new Error("offline"));
+    if (String(url).includes("22222222")) return Promise.resolve(Response.json({ uf: "SP" }));
+    const dados = String(url).includes("99999999")
+      ? { erro: true }
+      : { cep: "01001-000", logradouro: "Praça da Sé", bairro: "Sé", localidade: "São Paulo", uf: "SP" };
+    return Promise.resolve(Response.json(dados));
+  });
+
+  let preferencia;
+  let preferenciaVencida = false;
+  let chamadas = 0;
+  const pagamentos = [];
+  t.mock.method(Preference.prototype, "create", async ({ body }) => {
+    chamadas++;
+    preferencia = body;
+    return { id: "preferencia-teste", init_point: "https://checkout.example.invalid/teste" };
+  });
+  t.mock.method(Preference.prototype, "get", async () => ({
+    external_reference: preferencia.external_reference,
+    expires: preferenciaVencida,
+    expiration_date_to: new Date(Date.now() - 60000).toISOString(),
+  }));
+  t.mock.method(Payment.prototype, "get", async ({ id }) => pagamentos.find((pg) => String(pg.id) === String(id)));
+  t.mock.method(Payment.prototype, "search", async () => ({ results: [...pagamentos].reverse() }));
+
+  const srv = require("../src/app").listen(0, "127.0.0.1");
+  await once(srv, "listening");
+  t.after(async () => {
+    await new Promise((resolve) => srv.close(resolve));
+    rmSync(pasta, { recursive: true, force: true });
+  });
+
+  async function chamar(path, status, { method = "GET", body, token, headers = {} } = {}) {
+    const r = await fetch(`http://127.0.0.1:${srv.address().port}${path}`, {
+      method,
+      headers: {
+        ...headers,
+        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const dados = await r.json().catch(() => null);
+    assert.equal(r.status, status, `${method} ${path} ${JSON.stringify(dados)}`);
+    return dados;
+  }
+
+  const post = (path, status, body, token) => chamar(path, status, { method: "POST", body, token });
+  const cliente = { nome_cliente: "Cliente Teste", email: "cliente@example.invalid", senha: "senha-teste" };
+  assert.deepEqual(await chamar("/health", 200), { status: "ok" });
+  await post("/clientes", 400, {});
+  await post("/clientes", 400, { ...cliente, senha: "a".repeat(73) });
+  await post("/clientes", 201, cliente);
+  await post("/clientes", 409, cliente);
+  await post("/login", 401, { ...cliente, senha: "errada" });
+  const { token } = await post("/login", 200, cliente);
+
+  const admin = await post("/admin/login", 200, { email: "admin@example.invalid", senha: "senha-teste" });
+  await chamar("/admin/produtos", 401, { token });
+  await post("/pedidos", 401, {}, admin.token);
+
+  const catalogo = await chamar("/produtos", 200);
+  assert.equal(catalogo.length, 16);
+  const [banana] = await chamar("/produtos?busca=Banana", 200);
+  assert.equal(banana.nome_produto, "Banana Prata 1kg");
+  assert.ok((await chamar("/produtos?categoria=1", 200)).some((p) => p.id === banana.id));
+  await chamar("/produtos/999", 404);
+  assert.equal((await chamar("/cep/01001000", 200)).valor_frete, 1500);
+  await chamar("/cep/abc", 400);
+  await chamar("/cep/a01001000", 400);
+  await chamar("/cep/99999999", 404);
+  await chamar("/cep/11111111", 502);
+  await chamar("/cep/22222222", 502);
+
+  const compra = {
+    cep_entrega: "01001-000", endereco_entrega: "Praça da Sé, 1", chave_checkout: randomUUID(),
+    itens: [{ id_produto: banana.id, quantidade: 1 }],
+  };
+  await post("/pedidos", 409, {
+    ...compra, itens: [{ id_produto: banana.id, quantidade: banana.estoque + 1 }],
+  }, token);
+  const [pedido, repetido] = await Promise.all([
+    post("/pedidos", 201, compra, token), post("/pedidos", 201, compra, token),
+  ]);
+  assert.equal(pedido.id, repetido.id);
+  const conflito = await post("/pedidos", 409, { ...compra, endereco_entrega: "Praça da Sé, 2" }, token);
+  assert.match(conflito.erro, /chave do checkout/);
+  assert.equal(pedido.valor_total, banana.preco + 1500);
+  assert.equal((await chamar(`/produtos/${banana.id}`, 200)).estoque, banana.estoque - 1);
+
+  const outro = { ...cliente, email: "outro@example.invalid" };
+  await post("/clientes", 201, outro);
+  const sessaoOutro = await post("/login", 200, outro);
+  await chamar(`/pedidos/${pedido.id}`, 404, { token: sessaoOutro.token });
+  await post("/pagamentos/sincronizar", 404, { pedido_id: pedido.id }, sessaoOutro.token);
+
+  const caminhoPagamento = `/pedidos/${pedido.id}/pagamento`;
+  const links = await Promise.all([post(caminhoPagamento, 200, {}, token), post(caminhoPagamento, 200, {}, token)]);
+  assert.deepEqual(links[0], links[1]);
+  assert.equal(chamadas, 1);
+  assert.equal(preferencia.back_urls.success, `https://loja.example.invalid/pedido/${pedido.id}`);
+  const cancelar = (id, status) => chamar(`/admin/pedidos/${id}/situacao`, status, {
+    method: "PATCH", body: { situacao: "Cancelado" }, token: admin.token,
+  });
+  await cancelar(pedido.id, 409);
+  assert.equal((await chamar(`/produtos/${banana.id}`, 200)).estoque, banana.estoque - 1);
+  const pagamento = {
+    id: 1, external_reference: preferencia.external_reference,
+    currency_id: "BRL", transaction_amount: pedido.valor_total / 100, payment_type_id: "credit_card",
+  };
+  await post("/pagamentos/webhook?data.id=1", 401, { type: "payment" });
+  for (const [status, gravado] of [["pending", "Pendente"], ["rejected", "Recusado"], ["approved", "Aprovado"]]) {
+    pagamentos.push({ ...pagamento, id: status === "approved" ? 2 : 1, status });
+    if (status === "approved") {
+      const ts = String(Date.now());
+      const reqId = randomUUID();
+      const hash = createHmac("sha256", process.env.MP_WEBHOOK_SECRET)
+        .update(`id:2;request-id:${reqId};ts:${ts};`).digest("hex");
+      await chamar("/pagamentos/webhook?data.id=2", 200, {
+        method: "POST", body: { type: "payment" },
+        headers: { "x-signature": `ts=${ts},v1=${hash}`, "x-request-id": reqId },
+      });
+    } else {
+      await post("/pagamentos/sincronizar", 200, { pedido_id: pedido.id }, token);
+    }
+    const detalhe = await chamar(`/pedidos/${pedido.id}`, 200, { token });
+    assert.equal(detalhe.pagamentos[0].situacao, gravado);
+    assert.equal(detalhe.situacao, status === "approved" ? "Pago" : "Pendente");
+  }
+  await post("/pagamentos/sincronizar", 200, { pedido_id: pedido.id }, token);
+  await chamar(`/admin/pedidos/${pedido.id}/situacao`, 200, {
+    method: "PATCH", body: { situacao: "Enviado" }, token: admin.token,
+  });
+
+  const cancelavel = await post("/pedidos", 201, { ...compra, chave_checkout: randomUUID() }, token);
+  await post(`/pedidos/${cancelavel.id}/pagamento`, 200, {}, token);
+  preferenciaVencida = true;
+  assert.equal((await cancelar(cancelavel.id, 200)).situacao, "Cancelado");
+  assert.equal((await chamar(`/produtos/${banana.id}`, 200)).estoque, banana.estoque - 1);
+  pagamentos.push({ ...pagamento, id: 3, status: "approved", external_reference: preferencia.external_reference });
+  await post("/pagamentos/sincronizar", 200, { pedido_id: cancelavel.id }, token);
+  const relato = await chamar(`/admin/pedidos/${cancelavel.id}`, 200, { token: admin.token });
+  assert.equal(relato.situacao, "Cancelado");
+  assert.equal(relato.alerta_pagamento, "APROVACAO_APOS_CANCELAMENTO");
+  assert.equal(relato.pagamentos[0].situacao, "Aprovado");
+
+  const produto = await post("/admin/produtos", 201, {
+    nome_produto: "Produto teste", descricao: "Cadastro na auditoria", preco: 599, preco_anterior: 699,
+    estoque: 0, id_categoria: banana.id_categoria,
+  }, admin.token);
+  await post("/pedidos", 409, {
+    ...compra, chave_checkout: randomUUID(), itens: [{ id_produto: produto.id, quantidade: 1 }],
+  }, token);
+
+  const persisted = new DatabaseSync(process.env.DB_PATH, { readOnly: true });
+  assert.equal(persisted.prepare("SELECT count(*) AS n FROM pagamento").get().n, 3);
+  assert.equal(persisted.prepare("PRAGMA quick_check").get().quick_check, "ok");
+  persisted.close();
+});

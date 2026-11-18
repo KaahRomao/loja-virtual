@@ -6,8 +6,11 @@ const STATUS_POR_CODIGO = {
   PRODUTO_NAO_ENCONTRADO: 404,
   CATEGORIA_NAO_ENCONTRADA: 404,
   CATEGORIA_INVALIDA: 400,
+  PRECO_INVALIDO: 400,
   TRANSICAO_INVALIDA: 409,
   CONFLITO: 409,
+  MP_INDISPONIVEL: 502,
+  MP_NAO_CONFIGURADO: 503,
 };
 
 function tratar(fn) {
@@ -25,7 +28,7 @@ function tratar(fn) {
 
 function idDaRota(req, res) {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) {
+  if (!Number.isSafeInteger(id) || id <= 0) {
     res.status(400).json({ erro: "ID inválido" });
     return null;
   }
@@ -33,13 +36,12 @@ function idDaRota(req, res) {
 }
 
 const texto = (v) => typeof v === "string" && v.trim() !== "";
-const inteiro = (v, min) => Number.isInteger(v) && v >= min;
+const inteiro = (v, min) => Number.isSafeInteger(v) && v >= min;
 
 const REGRAS_PRODUTO = {
   nome_produto: [texto, "nome_produto deve ser um texto"],
   descricao: [texto, "descricao deve ser um texto"],
-  img_url: [texto, "img_url deve ser um texto"],
-  preco: [(v) => inteiro(v, 0), "preco deve ser inteiro em centavos (>= 0)"],
+  preco: [(v) => inteiro(v, 1), "preco deve ser inteiro em centavos (> 0)"],
   estoque: [(v) => inteiro(v, 0), "estoque deve ser inteiro (>= 0)"],
   id_categoria: [
     (v) => inteiro(v, 1),
@@ -55,6 +57,17 @@ function validarProduto(b, parcial) {
     } else if (!ok(b[campo])) {
       erros.push(msg);
     }
+  }
+  for (const campo of ["img_url", "unidade"]) {
+    if (b[campo] !== undefined && typeof b[campo] !== "string") {
+      erros.push(`${campo} deve ser um texto`);
+    }
+  }
+  if (b.img_url && typeof b.img_url === "string" && !/^(https?:\/\/|\/(?!\/))/.test(b.img_url)) {
+    erros.push("img_url deve ser uma URL http(s) ou um caminho local");
+  }
+  if (b.preco_anterior != null && !inteiro(b.preco_anterior, 1)) {
+    erros.push("preco_anterior deve ser inteiro em centavos ou nulo");
   }
   if (b.situacao !== undefined && !["Ativo", "Inativo"].includes(b.situacao)) {
     erros.push("situacao deve ser Ativo ou Inativo");

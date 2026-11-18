@@ -64,6 +64,7 @@ export default function App() {
             path="checkout/confirmacao"
             element={<CheckoutConfirmation />}
           />
+          <Route path="pedido/:id" element={<CheckoutConfirmation />} />
           <Route path="entrar" element={<Login />} />
           <Route path="cadastro" element={<Signup />} />
           <Route path="*" element={<NotFound />} />

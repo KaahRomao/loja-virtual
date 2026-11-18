@@ -1,10 +1,11 @@
-require("dotenv").config();
+const { join } = require("node:path");
+require("dotenv").config({ path: join(__dirname, "../.env"), quiet: true });
 const bcrypt = require("bcryptjs");
 const db = require("../src/database/connection");
 
 async function main() {
-  const [nome, email, senha] = process.argv.slice(2);
-  if (!nome || !email || !senha) {
+  const [nome, email, senha = process.env.VORA_ADMIN_PASSWORD] = process.argv.slice(2);
+  if (!nome || !email || !senha || senha.length < 6) {
     console.error('Uso: node scripts/criar-admin.js "Nome" email senha');
     process.exit(1);
   }

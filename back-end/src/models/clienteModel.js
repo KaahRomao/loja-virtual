@@ -8,10 +8,10 @@ async function buscarPorEmail(email) {
   return resultado.rows[0];
 }
 
-async function criar({ nome_cliente, email, senha }) {
+async function criar({ nome_cliente, email, senha, telefone }) {
   const resultado = await db.execute({
-    sql: "INSERT INTO cliente (nome_cliente, email, senha) VALUES (?, ?, ?)",
-    args: [nome_cliente, email, senha],
+    sql: "INSERT INTO cliente (nome_cliente, email, senha, telefone) VALUES (?, ?, ?, ?)",
+    args: [nome_cliente, email, senha, telefone || null],
   });
 
   return {

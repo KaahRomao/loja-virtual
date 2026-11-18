@@ -6,8 +6,9 @@ import ProductPhoto from "./ProductPhoto";
 import Button from "./ui/Button";
 
 export default function ProductCard({ product }) {
-  const { setQuantity, favorites, toggleFavorite, categoryNames } = useStore();
+  const { cart, setQuantity, favorites, toggleFavorite, categoryNames } = useStore();
   const fav = favorites.includes(product.id);
+  const disponivel = product.stock > (cart[product.id] || 0);
   const to = `/produto/${product.id}`;
 
   return (
@@ -45,7 +46,8 @@ export default function ProductCard({ product }) {
               {formatPrice(product.price)}
             </strong>
           </div>
-          <Button variant="primary" size="icon" aria-label={`Adicionar ${product.name} ao carrinho`} onClick={() => setQuantity(product.id, 1)}>
+          {product.stock === 0 && <span className="text-xs text-muted-foreground">Esgotado</span>}
+          <Button variant="primary" size="icon" disabled={!disponivel} aria-label={`Adicionar ${product.name} ao carrinho`} onClick={() => setQuantity(product.id, 1)}>
             <Plus size={16} />
           </Button>
         </div>

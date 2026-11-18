@@ -10,11 +10,11 @@ const FRETE_SUDESTE = { valor_frete: 2000, prazo_entrega: 5 };
 const FRETE_DEMAIS = { valor_frete: 3000, prazo_entrega: 8 };
 
 async function consultarCep(cep) {
-  const limpo = String(cep).replace(/\D/g, "");
-
-  if (limpo.length !== 8) {
+  const texto = String(cep).trim();
+  if (!/^\d{5}-?\d{3}$/.test(texto)) {
     throw erroCep("CEP_INVALIDO", "CEP inválido");
   }
+  const limpo = texto.replace("-", "");
 
   let resposta;
   try {
@@ -29,16 +29,27 @@ async function consultarCep(cep) {
     throw erroCep("CEP_SERVICO_INDISPONIVEL", "Serviço de CEP indisponível");
   }
 
-  const dados = await resposta.json();
+  const dados = await resposta.json().catch(() => null);
+  if (!dados) throw erroCep("CEP_SERVICO_INDISPONIVEL", "Serviço de CEP indisponível");
 
   if (dados.erro) {
     throw erroCep("CEP_NAO_ENCONTRADO", "CEP não encontrado");
   }
+  if (
+    typeof dados.cep !== "string" ||
+    dados.cep.replace("-", "") !== limpo ||
+    typeof dados.localidade !== "string" ||
+    !dados.localidade ||
+    typeof dados.uf !== "string" ||
+    !/^[A-Z]{2}$/.test(dados.uf)
+  ) {
+    throw erroCep("CEP_SERVICO_INDISPONIVEL", "Serviço de CEP devolveu um endereço inválido");
+  }
 
   return {
     cep: dados.cep,
-    logradouro: dados.logradouro,
-    bairro: dados.bairro,
+    logradouro: typeof dados.logradouro === "string" ? dados.logradouro : "",
+    bairro: typeof dados.bairro === "string" ? dados.bairro : "",
     cidade: dados.localidade,
     uf: dados.uf,
   };

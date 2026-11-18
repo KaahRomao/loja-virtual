@@ -1,26 +1,22 @@
-// Camada de acesso à API do back-end. Todas as chamadas passam por request().
-export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+export const API_URL = (import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
 
-const TOKEN_KEY = "vora_token";
-
-export const getToken = () => {
+export function readSession(key) {
   try {
-    return localStorage.getItem(TOKEN_KEY);
+    return JSON.parse(sessionStorage.getItem(`vora_${key}`));
   } catch {
     return null;
   }
-};
+}
 
-export const saveToken = (token) => {
+export function writeSession(key, value) {
   try {
-    if (token) localStorage.setItem(TOKEN_KEY, token);
-    else localStorage.removeItem(TOKEN_KEY);
+    if (value == null) sessionStorage.removeItem(`vora_${key}`);
+    else sessionStorage.setItem(`vora_${key}`, JSON.stringify(value));
   } catch {
-    /* sem localStorage: o login vale só até recarregar a página */
+    // O estado em memória permanece disponível nesta página.
   }
-};
+}
 
-// Erro com a mensagem que o back-end devolve em { erro } e o status HTTP.
 export class ApiError extends Error {
   constructor(message, status) {
     super(message);
@@ -28,66 +24,66 @@ export class ApiError extends Error {
   }
 }
 
-export async function request(
-  path,
-  { method = "GET", body, auth = false } = {},
-) {
-  const headers = {};
+export async function request(path, { method = "GET", body, token, signal } = {}) {
+  const headers = { Accept: "application/json" };
   if (body !== undefined) headers["Content-Type"] = "application/json";
-  if (auth) {
-    const token = getToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
-  }
+  if (token) headers.Authorization = `Bearer ${token}`;
 
   let resposta;
   try {
     resposta = await fetch(`${API_URL}${path}`, {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      method, headers, signal,
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
-  } catch {
-    throw new ApiError(
-      "Não foi possível falar com o servidor. Tente de novo.",
-      0,
-    );
+  } catch (erro) {
+    if (erro.name === "AbortError") throw erro;
+    throw new ApiError("Não foi possível falar com a API. Confira a conexão e tente novamente.", 0);
   }
 
   const dados = await resposta.json().catch(() => null);
-  if (!resposta.ok) {
-    throw new ApiError(dados?.erro ?? "Erro inesperado", resposta.status);
-  }
+  if (!resposta.ok) throw new ApiError(dados?.erro ?? "Erro inesperado no servidor.", resposta.status);
+  if (dados === null) throw new ApiError("A API devolveu uma resposta inválida.", resposta.status);
   return dados;
 }
 
 export const slugify = (texto) =>
-  texto
-    .normalize("NFD")
-<<<<<<< HEAD
-    .replace(/[\u0300-\u036f]/g, "")
-=======
-    .replace(/[̀-ͯ]/g, "")
->>>>>>> vercel
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
+  texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
-// Converte o produto do back-end (centavos, nomes do banco) para o formato que o front usa.
 export function adaptarProduto(p) {
   return {
     id: p.id,
     name: p.nome_produto,
-    unit: "",
+    unit: p.unidade || "",
     price: p.preco / 100,
+    oldPrice: p.preco_anterior == null ? null : p.preco_anterior / 100,
     description: p.descricao,
     imageUrl: p.img_url,
     category: slugify(p.nome_categoria),
     categoryName: p.nome_categoria,
+    categoryId: p.id_categoria,
     stock: p.estoque,
+    active: p.situacao === undefined || p.situacao === "Ativo",
   };
 }
 
-export async function listarProdutos() {
-  const lista = await request("/produtos");
+export async function listarProdutos(signal) {
+  const lista = await request("/produtos", { signal });
   return lista.map(adaptarProduto);
+}
+
+export function consultarCep(cep) {
+  return request(`/cep/${cep.replace(/\D/g, "")}`);
+}
+
+export function dadosDoCep(cotacao) {
+  return {
+    zip: cotacao.cep.replace(/\D/g, ""),
+    street: cotacao.logradouro,
+    neighborhood: cotacao.bairro,
+    city: cotacao.cidade,
+    uf: cotacao.uf,
+    freight: cotacao.valor_frete,
+    deliveryDays: cotacao.prazo_entrega,
+  };
 }

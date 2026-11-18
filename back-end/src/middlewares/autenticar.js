@@ -12,7 +12,7 @@ function autenticar(req, res, next) {
     const dados = jwt.verify(token, process.env.JWT_SECRET);
 
     // Verificação para garantir que um admin não use rotas de cliente
-    if (dados.tipo === "admin") {
+    if (dados.tipo !== "cliente" || !Number.isSafeInteger(dados.id)) {
       return res.status(401).json({ erro: "Token inválido ou expirado" });
     }
 

@@ -15,6 +15,7 @@ import { eyebrow } from "../components/ui/styles";
 function Detail({ product }) {
   const {
     products,
+    cart,
     setQuantity,
     setCartOpen,
     favorites,
@@ -24,6 +25,7 @@ function Detail({ product }) {
   const navigate = useNavigate();
   const [qty, setQty] = useState(1);
 
+  const disponivel = Math.max(0, product.stock - (cart[product.id] || 0));
   const fav = favorites.includes(product.id);
   const related = products
     .filter((p) => p.category === product.category && p.id !== product.id)
@@ -78,21 +80,24 @@ function Detail({ product }) {
             <QuantityStepper
               big
               value={qty}
+              max={disponivel}
               onMinus={() => setQty((q) => Math.max(1, q - 1))}
-              onPlus={() => setQty((q) => q + 1)}
+              onPlus={() => setQty((q) => Math.min(disponivel, q + 1))}
             />
             <Button
               size="lg"
+              disabled={disponivel === 0}
               onClick={() => {
                 setQuantity(product.id, qty);
                 navigate("/carrinho");
               }}
             >
-              <ShoppingBasket size={16} /> Comprar agora
+              <ShoppingBasket size={16} /> {disponivel === 0 ? "Indisponível" : "Comprar agora"}
             </Button>
             <Button
               variant="outline"
               size="lg"
+              disabled={disponivel === 0}
               onClick={() => {
                 setQuantity(product.id, qty);
                 setCartOpen(true);

@@ -2,7 +2,7 @@ const clienteService = require("../services/clienteService");
 
 async function cadastrar(req, res) {
   try {
-    const { nome_cliente, email, senha } = req.body ?? {};
+    const { nome_cliente, email, senha, telefone } = req.body ?? {};
 
     const campos = [nome_cliente, email, senha];
     if (campos.some((c) => typeof c !== "string" || !c.trim())) {
@@ -20,8 +20,17 @@ async function cadastrar(req, res) {
         .status(400)
         .json({ erro: "A senha deve ter pelo menos 6 caracteres" });
     }
+    if (Buffer.byteLength(senha, "utf8") > 72) {
+      return res.status(400).json({ erro: "A senha deve ocupar no máximo 72 bytes" });
+    }
+
+    if (telefone != null && telefone !== "" &&
+        (typeof telefone !== "string" || !/^[+() .0-9-]{8,24}$/.test(telefone.trim()))) {
+      return res.status(400).json({ erro: "Telefone inválido" });
+    }
 
     const cliente = await clienteService.cadastrar({
+      telefone: typeof telefone === "string" ? telefone.trim() : null,
       nome_cliente: nome_cliente.trim(),
       email: email.trim(),
       senha,
@@ -31,7 +40,7 @@ async function cadastrar(req, res) {
   } catch (erro) {
     if (
       erro.codigo === "EMAIL_JA_CADASTRADO" ||
-      erro.code === "SQLITE_CONSTRAINT_UNIQUE"
+      erro.errcode === 2067
     ) {
       return res.status(409).json({ erro: "Email já cadastrado" });
     }

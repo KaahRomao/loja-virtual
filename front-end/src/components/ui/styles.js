@@ -53,10 +53,11 @@ export const stockTone = {
   esgotado: "bg-destructive/15 text-destructive",
 };
 export const orderTone = {
-  recebido: "bg-accent text-deep",
-  separando: "bg-[oklch(95%_.08_85)] text-[oklch(45%_.12_70)]",
-  entrega: "bg-primary text-primary-foreground",
-  entregue: "bg-muted text-muted-foreground",
+  Pendente: "bg-accent text-deep",
+  Pago: "bg-[oklch(95%_.08_85)] text-[oklch(45%_.12_70)]",
+  Enviado: "bg-primary text-primary-foreground",
+  Entregue: "bg-muted text-muted-foreground",
+  Cancelado: "bg-destructive/15 text-destructive",
 };
 
 // Títulos de seção (Fredoka)

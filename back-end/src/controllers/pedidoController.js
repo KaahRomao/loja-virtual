@@ -1,9 +1,8 @@
 const pedidoService = require("../services/pedidoService");
-const mercadoPagoService = require("../services/mercadoPagoService");
 
 async function criar(req, res) {
   try {
-    const { itens, endereco_entrega, cep_entrega } = req.body ?? {};
+    const { itens, endereco_entrega, cep_entrega, chave_checkout } = req.body ?? {};
 
     if (!Array.isArray(itens) || itens.length === 0) {
       return res
@@ -13,9 +12,9 @@ async function criar(req, res) {
 
     const itensValidos = itens.every(
       (i) =>
-        Number.isInteger(i?.id_produto) &&
+        Number.isSafeInteger(i?.id_produto) &&
         i.id_produto > 0 &&
-        Number.isInteger(i?.quantidade) &&
+        Number.isSafeInteger(i?.quantidade) &&
         i.quantidade > 0,
     );
     if (!itensValidos) {
@@ -35,7 +34,14 @@ async function criar(req, res) {
       return res.status(400).json({ erro: "CEP inválido" });
     }
 
+    if (chave_checkout !== undefined &&
+        (typeof chave_checkout !== "string" ||
+         !/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(chave_checkout))) {
+      return res.status(400).json({ erro: "Chave do checkout inválida" });
+    }
+
     const pedido = await pedidoService.criarPedido({
+      chave_checkout,
       idCliente: req.clienteId,
       itens,
       endereco_entrega: endereco_entrega.trim(),
@@ -44,10 +50,10 @@ async function criar(req, res) {
 
     res.status(201).json(pedido);
   } catch (erro) {
-    if (erro.codigo === "PRODUTO_INDISPONIVEL") {
+    if (erro.codigo === "PRODUTO_INDISPONIVEL" || erro.codigo === "TOTAL_INVALIDO") {
       return res.status(400).json({ erro: erro.message });
     }
-    if (erro.codigo === "ESTOQUE_INSUFICIENTE") {
+    if (erro.codigo === "ESTOQUE_INSUFICIENTE" || erro.codigo === "CHAVE_CHECKOUT_CONFLITANTE") {
       return res.status(409).json({ erro: erro.message });
     }
     if (erro.codigo === "CEP_INVALIDO") {
@@ -68,7 +74,7 @@ async function detalhar(req, res) {
   try {
     const id = Number(req.params.id);
 
-    if (!Number.isInteger(id) || id <= 0) {
+    if (!Number.isSafeInteger(id) || id <= 0) {
       return res.status(400).json({ erro: "ID do pedido inválido" });
     }
 
@@ -88,7 +94,7 @@ async function detalhar(req, res) {
 async function pagar(req, res) {
   try {
     const id = Number(req.params.id);
-    if (!Number.isInteger(id) || id <= 0) {
+    if (!Number.isSafeInteger(id) || id <= 0) {
       return res.status(400).json({ erro: "ID do pedido inválido" });
     }
 
@@ -100,9 +106,16 @@ async function pagar(req, res) {
       return res.status(409).json({ erro: "Pedido não está pendente" });
     }
 
-    const preferencia = await mercadoPagoService.criarPreferencia(pedido);
-    return res.status(200).json(preferencia);
+    const preferencia = await pedidoService.gerarPreferencia(pedido);
+    if (!preferencia) return res.status(409).json({ erro: "Pedido não está pendente" });
+    return res.status(200).json({ ...preferencia, retorno_configurado: Boolean(process.env.MP_RETURN_URL) });
   } catch (erro) {
+    if (erro.codigo === "MP_NAO_CONFIGURADO") {
+      return res.status(503).json({ erro: erro.message });
+    }
+    if (erro.codigo === "MP_INDISPONIVEL") {
+      return res.status(502).json({ erro: erro.message });
+    }
     console.error(erro);
     return res.status(500).json({ erro: "Erro interno do servidor" });
   }

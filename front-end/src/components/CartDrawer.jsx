@@ -63,6 +63,7 @@ export default function CartDrawer() {
                   <div className="mt-2 flex items-center justify-between">
                     <QuantityStepper
                       value={item.qty}
+                  max={item.stock}
                       label={item.name}
                       onMinus={() => setQuantity(item.id, -1)}
                       onPlus={() => setQuantity(item.id, 1)}

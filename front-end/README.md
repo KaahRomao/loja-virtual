@@ -1,63 +1,14 @@
-# VORA Supermarket — Front-end
+# Front-end do Vora Supermarket
 
-Loja virtual do Projeto Integrador (SENAI Barueri). Interface em **React 19 + Tailwind CSS 4**, com o visual da loja publicada no Lovable (`vora-market-emoji-grocer.lovable.app`).
+A loja e o painel são uma SPA em React, Vite, React Router e Tailwind CSS. O catálogo, a autenticação, o checkout e as operações administrativas usam a API Express.
 
-## Como rodar
+Siga o [README do projeto](../README.md) para iniciar o SQLite e a API. No desenvolvimento e no preview, o Vite encaminha `/api` para `http://localhost:3000`. Para usar uma API em outro endereço no build, defina `VITE_API_URL` com a URL base desse servidor e habilite a origem da loja com `FRONT_URL` no back-end.
 
 ```bash
-cd front-end
-npm install
-npm run dev      # http://localhost:5173
-npm run build    # gera dist/
+npm ci
+npm run dev
 npm run lint
+npm run build
 ```
 
-## Stack
-
-- React 19 + Vite 8
-- Tailwind CSS 4 (`@tailwindcss/vite`) — tokens de cor, fontes e sombras em `src/index.css` (`@theme`)
-- react-router-dom 7
-- lucide-react (ícones)
-- Fontes: Fredoka (títulos) e Nunito (texto), carregadas pelo `index.html`
-
-## Estrutura
-
-```
-src/
-  assets/          imagens (hero, logo, sprites dos produtos) + index.js
-  components/      Header, Footer, CartDrawer, ProductCard, ProductGrid, ...
-    ui/            Button e estilos reutilizáveis (styles.js)
-  context/         StoreProvider (carrinho, favoritos, endereço, pagamento, pedidos, admin)
-  data/products.js produtos, categorias e funções de formatação (dados de exemplo)
-  hooks/           useStore
-  layouts/         StoreLayout (loja) e AdminLayout (painel)
-  pages/           Home, Catalog, ProductDetail, Cart, Checkout*, Login, Signup
-  pages/admin/     Dashboard, Produtos, Pedidos, Categorias
-```
-
-## Rotas
-
-| Rota | Tela |
-| --- | --- |
-| `/` | Home |
-| `/catalogo`, `/categoria/:slug` | Catálogo / categoria |
-| `/produto/:id` | Detalhe do produto |
-| `/carrinho` | Carrinho |
-| `/checkout/endereco` → `/pagamento` → `/confirmacao` | Checkout |
-| `/entrar`, `/cadastro` | Login e cadastro |
-| `/admin`, `/admin/produtos`, `/admin/produtos/:id`, `/admin/pedidos`, `/admin/categorias` | Painel administrativo |
-
-## Importante: os dados são de exemplo
-
-Nada aqui conversa com o back-end ainda. Produtos, pedidos, carrinho, login e painel admin vivem em memória (`StoreProvider` + `data/products.js`) e somem ao recarregar a página. Os pontos onde a integração entra estão marcados com o comentário `Aqui você ... no seu back-end`:
-
-- `layouts/AdminLayout.jsx` — login do administrador
-- `pages/Login.jsx` e `pages/Signup.jsx` — autenticação do cliente
-- `context/StoreProvider.jsx` — envio do pedido
-- `pages/admin/AdminProductEdit.jsx` — salvar produto
-
-Ao integrar, atenção às diferenças de formato: o front usa preço em reais (`22.9`), enquanto o back-end trabalha em centavos, e os ids de produto/categoria precisam bater com os da API.
-
-## Responsivo
-
-Breakpoints próprios (definidos com `@custom-variant` em `index.css`): `compact` (≤1100px), `tablet` (≤900px), `mobile` (≤760px) e `tiny` (≤390px).
+As rotas principais são `/`, `/catalogo`, `/categoria/:slug`, `/produto/:id`, `/carrinho`, `/checkout/endereco`, `/checkout/pagamento`, `/pedido/:id`, `/entrar`, `/cadastro` e `/admin`. O carrinho e as sessões ficam disponíveis na aba ao recarregar a página. Os pedidos e pagamentos são consultados no SQLite pela API.

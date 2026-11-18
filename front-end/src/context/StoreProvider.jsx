@@ -1,147 +1,117 @@
-import { useEffect, useMemo, useState } from "react";
-import { sampleOrders } from "../data/products";
-import { listarProdutos } from "../services/api";
+import { useEffect, useState } from "react";
+import { listarProdutos, readSession, request, writeSession } from "../services/api";
 import { StoreContext } from "./store-context";
 
-// Estado da loja: produtos (vindos da API), carrinho, favoritos, checkout e painel (só nesta visita).
+function sessaoInicial(tipo) {
+  const sessao = readSession(tipo);
+  return sessao?.expira > Date.now() ? sessao : null;
+}
+
 export function StoreProvider({ children }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [cart, setCart] = useState({});
+  const [revision, setRevision] = useState(0);
+  const [cart, setCart] = useState(() => readSession("carrinho") ?? {});
   const [cartOpen, setCartOpen] = useState(false);
-  const [favorites, setFavorites] = useState([]);
-  const [categoryNames, setCategoryNames] = useState({});
+  const [favorites, setFavorites] = useState(() => readSession("favoritos") ?? []);
   const [address, setAddress] = useState({
-    name: "",
-    zip: "",
-    street: "",
-    number: "",
-    complement: "",
+    name: "", zip: "", street: "", number: "", complement: "",
+    neighborhood: "", city: "", uf: "", freight: null, deliveryDays: null,
   });
-  const [payment, setPayment] = useState("pix");
-  const [lastOrder, setLastOrder] = useState(null);
-  const [user, setUser] = useState(null);
-  const [adminSignedIn, setAdminSignedIn] = useState(false);
-  const [rows, setRows] = useState([]);
-  const [orders, setOrders] = useState(sampleOrders);
+  const [client, setClient] = useState(() => sessaoInicial("cliente"));
+  const [admin, setAdmin] = useState(() => sessaoInicial("admin"));
 
-  // Carrega os produtos uma vez, quando a loja abre.
+  function refreshProducts() {
+    setLoading(true);
+    setError(null);
+    setRevision((v) => v + 1);
+  }
+
   useEffect(() => {
-    let cancelado = false;
+    const controller = new AbortController();
+    listarProdutos(controller.signal)
+      .then(setProducts)
+      .catch((erro) => { if (!controller.signal.aborted) setError(erro.message); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [revision]);
 
-    listarProdutos()
-      .then((lista) => {
-        if (cancelado) return;
-        const nomes = {};
-        for (const p of lista) nomes[p.category] = p.categoryName;
-        setProducts(lista);
-        setCategoryNames(nomes);
-        setRows(lista.map((p) => ({ ...p, active: true })));
-      })
-      .catch((e) => {
-        if (!cancelado) setError(e.message);
-      })
-      .finally(() => {
-        if (!cancelado) setLoading(false);
+  useEffect(() => { writeSession("carrinho", cart); }, [cart]);
+  useEffect(() => { writeSession("favoritos", favorites); }, [favorites]);
+  useEffect(() => {
+    const timers = [[client, setClient, "cliente"], [admin, setAdmin, "admin"]]
+      .filter(([sessao]) => sessao)
+      .map(([sessao, set, tipo]) => setTimeout(() => {
+        writeSession(tipo, null);
+        set(null);
+      }, Math.max(0, sessao.expira - Date.now())));
+    return () => timers.forEach(clearTimeout);
+  }, [client, admin]);
+
+  async function login(tipo, email, senha) {
+    const adminLogin = tipo === "admin";
+    const dados = await request(adminLogin ? "/admin/login" : "/login", {
+      method: "POST", body: { email, senha },
+    });
+    const conta = adminLogin ? dados.admin : dados.cliente;
+    const sessao = {
+      ...conta,
+      name: conta.nome_cliente ?? conta.nome,
+      token: dados.token,
+      expira: Date.now() + 2 * 60 * 60 * 1000,
+    };
+    writeSession(tipo, sessao);
+    (adminLogin ? setAdmin : setClient)(sessao);
+  }
+
+  function logout(tipo) {
+    writeSession(tipo, null);
+    if (tipo === "admin") {
+      setAdmin(null);
+    } else {
+      setClient(null);
+      setAddress({
+        name: "", zip: "", street: "", number: "", complement: "",
+        neighborhood: "", city: "", uf: "", freight: null, deliveryDays: null,
       });
+    }
+  }
 
-    return () => {
-      cancelado = true;
-    };
-  }, []);
+  const cartItems = products
+    .filter((p) => cart[p.id] > 0)
+    .map((p) => ({ ...p, qty: cart[p.id] }));
+  const categoryNames = Object.fromEntries(products.map((p) => [p.category, p.categoryName]));
+  const totalItems = cartItems.reduce((s, p) => s + p.qty, 0);
+  const total = cartItems.reduce((s, p) => s + Math.round(p.price * 100) * p.qty, 0) / 100;
 
-  const value = useMemo(() => {
-    const totalItems = Object.values(cart).reduce((s, q) => s + q, 0);
-    const total =
-      Math.round(
-        products.reduce((s, p) => s + p.price * (cart[p.id] || 0), 0) * 100,
-      ) / 100;
-    const cartItems = products
-      .filter((p) => cart[p.id])
-      .map((p) => ({ ...p, qty: cart[p.id] }));
+  const value = {
+    products, loading, error, refreshProducts, categoryNames, categorySlugs: Object.keys(categoryNames),
+    cart, cartItems, totalItems, total, cartOpen, setCartOpen, favorites,
+    address, setAddress, user: client, admin, login, logout,
+    setQuantity: (id, delta) => {
+      const stock = products.find((p) => p.id === id)?.stock ?? 0;
+      setCart((prev) => {
+        const next = { ...prev };
+        const quantity = Math.max(0, (next[id] || 0) + delta);
+        if (quantity === 0) delete next[id];
+        else next[id] = delta > 0 ? Math.max(prev[id] || 0, Math.min(quantity, stock)) : quantity;
+        return next;
+      });
+    },
+    removeItem: (id) => setCart((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    }),
+    clearCart: () => {
+      writeSession("carrinho", {});
+      setCart({});
+    },
+    toggleFavorite: (id) => setFavorites((f) =>
+      f.includes(id) ? f.filter((x) => x !== id) : [...f, id]
+    ),
+  };
 
-    return {
-      products,
-      loading,
-      error,
-      categorySlugs: Object.keys(categoryNames),
-      cart,
-      cartItems,
-      totalItems,
-      total,
-      cartOpen,
-      setCartOpen,
-      favorites,
-      categoryNames,
-      setCategoryNames,
-      address,
-      setAddress,
-      payment,
-      setPayment,
-      lastOrder,
-      user,
-      setUser,
-      adminSignedIn,
-      setAdminSignedIn,
-      rows,
-      setRows,
-      orders,
-      setOrders,
-      setQuantity: (id, delta) =>
-        setCart((prev) => {
-          const next = { ...prev };
-          const q = Math.max(0, (next[id] || 0) + delta);
-          if (q === 0) delete next[id];
-          else next[id] = q;
-          return next;
-        }),
-      removeItem: (id) =>
-        setCart((prev) => {
-          const next = { ...prev };
-          delete next[id];
-          return next;
-        }),
-      clearCart: () => setCart({}),
-      toggleFavorite: (id) =>
-        setFavorites((f) =>
-          f.includes(id) ? f.filter((x) => x !== id) : [...f, id],
-        ),
-      placeOrder: () => {
-        // Aqui você envia o pedido para o seu back-end.
-        const order = {
-          code: `VR-${1049 + orders.length - 5}`,
-          customer: address.name || "Cliente",
-          date: "Agora",
-          items: totalItems,
-          total,
-          payment,
-          status: "recebido",
-        };
-        setLastOrder(order);
-        setOrders((o) => [order, ...o]);
-        setCart({});
-        return order;
-      },
-    };
-  }, [
-    products,
-    loading,
-    error,
-    cart,
-    cartOpen,
-    favorites,
-    categoryNames,
-    address,
-    payment,
-    lastOrder,
-    user,
-    adminSignedIn,
-    rows,
-    orders,
-  ]);
-
-  return (
-    <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
-  );
+  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

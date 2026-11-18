@@ -1,5 +1,4 @@
-// Textos, formatadores e dados de exemplo do painel admin.
-// Os produtos NÃO ficam mais aqui: vêm da API (veja services/api.js e context/StoreProvider.jsx).
+// Textos e formatadores compartilhados pela loja e pelo painel.
 
 export const categoryTaglines = {
   frutas: "Fresquinhas, direto pra sua mesa",
@@ -16,18 +15,14 @@ export const formatPrice = (v) =>
   );
 
 export const formatZip = (v) =>
-  v.replace(/\D/g, "").replace(/^(\d{5})(\d)/, "$1-$2");
+  v.replace(/\D/g, "").slice(0, 8).replace(/^(\d{5})(\d)/, "$1-$2");
 
 export function validateZip(v) {
   const digits = v.replace(/\D/g, "");
   if (digits.length !== 8) return "Digite um CEP com 8 números.";
-  const n = Number(digits);
-  if (n < 1000000 || n > 19999999)
-    return "Ainda não entregamos nesse CEP. Tente outro endereço.";
   return null;
 }
 
-// ===== Dados do painel administrativo (exemplo) =====
 export const stockStatus = (stock) =>
   stock === 0 ? "esgotado" : stock < 15 ? "baixo" : "disponivel";
 export const stockLabels = {
@@ -35,62 +30,28 @@ export const stockLabels = {
   baixo: "Estoque baixo",
   esgotado: "Esgotado",
 };
-export const paymentLabels = {
-  pix: "Pix",
-  cartao: "Cartão na entrega",
-  dinheiro: "Dinheiro na entrega",
-};
-export const orderLabels = {
-  recebido: "Recebido",
-  separando: "Separando",
-  entrega: "Saiu para entrega",
-  entregue: "Entregue",
+export const orderTransitions = {
+  Pendente: ["Cancelado"],
+  Pago: ["Enviado"],
+  Enviado: ["Entregue"],
+  Entregue: [],
+  Cancelado: [],
 };
 
-export const sampleOrders = [
-  {
-    code: "VR-1048",
-    customer: "Maria Souza",
-    date: "22/10 18:40",
-    items: 9,
-    total: 128.4,
-    payment: "pix",
-    status: "recebido",
-  },
-  {
-    code: "VR-1047",
-    customer: "João Lima",
-    date: "22/10 17:12",
-    items: 4,
-    total: 46.9,
-    payment: "cartao",
-    status: "separando",
-  },
-  {
-    code: "VR-1046",
-    customer: "Ana Ferreira",
-    date: "22/10 15:05",
-    items: 12,
-    total: 203.15,
-    payment: "pix",
-    status: "entrega",
-  },
-  {
-    code: "VR-1045",
-    customer: "Carlos Rocha",
-    date: "21/10 19:30",
-    items: 6,
-    total: 74.3,
-    payment: "dinheiro",
-    status: "entregue",
-  },
-  {
-    code: "VR-1044",
-    customer: "Juliana Alves",
-    date: "21/10 11:48",
-    items: 3,
-    total: 31.47,
-    payment: "pix",
-    status: "entregue",
-  },
-];
+export const formatOrderDate = (data) =>
+  new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" })
+    .format(new Date(data.replace(" ", "T") + "Z"));
+
+export function camposDePreco(price, oldPrice, stock) {
+  const preco = /^\d+(?:[.,]\d{1,2})?$/.test(price) ? Math.round(Number(price.replace(",", ".")) * 100) : 0;
+  const anterior = /^\d+(?:[.,]\d{1,2})?$/.test(oldPrice)
+    ? Math.round(Number(oldPrice.replace(",", ".")) * 100) : 0;
+  if (!Number.isSafeInteger(preco) || preco <= 0) throw new Error("Informe um preço atual válido.");
+  if (oldPrice && (!Number.isSafeInteger(anterior) || anterior <= preco)) {
+    throw new Error("O preço anterior deve ser maior que o preço atual.");
+  }
+  if (!/^\d+$/.test(stock) || !Number.isSafeInteger(Number(stock))) {
+    throw new Error("Informe uma quantidade inteira para o estoque.");
+  }
+  return { preco, preco_anterior: anterior || null, estoque: Number(stock) };
+}

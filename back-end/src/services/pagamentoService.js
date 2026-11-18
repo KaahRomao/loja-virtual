@@ -1,48 +1,38 @@
-const mercadoPagoService = require("./mercadoPagoService");
+const mercadoPago = require("./mercadoPagoService");
 const pagamentoModel = require("../models/pagamentoModel");
 
-async function processarPagamento(idPagamento) {
-  const pg = await mercadoPagoService.buscarPagamento(idPagamento);
+const situacoes = new Map([
+  ["approved", "Aprovado"], ["rejected", "Recusado"], ["cancelled", "Recusado"],
+  ["pending", "Pendente"], ["in_process", "Pendente"], ["authorized", "Pendente"],
+]);
 
-  let aprovado;
-  if (pg.status === "approved") {
-    aprovado = true;
-  } else if (pg.status === "rejected" || pg.status === "cancelled") {
-    aprovado = false;
-  } else {
-    return { processado: false, motivo: `status ${pg.status}` };
+function registrar(pg, idCliente) {
+  const situacao = situacoes.get(pg.status);
+  if (!situacao || !pg.id || !pg.referencia) {
+    return { processado: false, motivo: "pagamento sem status reconhecido ou sem referência" };
   }
+  return pagamentoModel.registrar(pg, situacao, idCliente);
+}
 
-  if (!Number.isInteger(pg.id_pedido)) {
-    return { processado: false, motivo: "pagamento sem pedido" };
+async function processarPagamento(id, idCliente, idPedido) {
+  if (idPedido === undefined) return registrar(await mercadoPago.buscarPagamento(id), idCliente);
+
+  const pedido = pagamentoModel.referenciaDoCliente(idPedido, idCliente);
+  if (!pedido) return null;
+  if (!pedido.referencia_pagamento) return { processado: false };
+
+  if (id) {
+    const pg = await mercadoPago.buscarPagamento(id);
+    if (pg.referencia !== pedido.referencia_pagamento) return { processado: false };
+    return registrar(pg, idCliente);
   }
-
-  const pedido = await pagamentoModel.buscarPedidoBasico(pg.id_pedido);
-  if (!pedido) {
-    return { processado: false, motivo: "pedido inexistente" };
-  }
-
-  if (await pagamentoModel.pagamentoExiste(pg.id)) {
-    return { processado: false, motivo: "já registrado" };
-  }
-
-  if (aprovado) {
-    if (pedido.situacao !== "Pendente") {
-      return { processado: false, motivo: "pedido não está pendente" };
-    }
-    if (Math.round(pg.valor * 100) !== pedido.valor_total) {
-      return { processado: false, motivo: "valor divergente" };
-    }
-  }
-
-  await pagamentoModel.registrar({
-    idTransacao: pg.id,
-    forma: pg.forma,
-    idPedido: pedido.id,
-    aprovado,
-  });
-
-  return { processado: true, aprovado };
+  const pagamentos = await mercadoPago.buscarPorReferencia(pedido.referencia_pagamento);
+  const vinculados = pagamentos.filter((pg) => pg.referencia === pedido.referencia_pagamento);
+  const resultados = vinculados.map((pg) => registrar(pg, idCliente));
+  return {
+    processado: resultados.some((resultado) => resultado.processado),
+    pagamento_em_curso: vinculados.some((pg) => ["Pendente", "Aprovado"].includes(situacoes.get(pg.status))),
+  };
 }
 
 module.exports = { processarPagamento };
