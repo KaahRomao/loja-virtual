@@ -54,6 +54,7 @@ function codigoParaLog(erro) {
 
 app.use((erro, req, res, next) => {
   if (res.headersSent) return next(erro);
+  if (erro instanceof URIError && erro.status === 400) return res.status(400).json({ erro: "Endereço da requisição inválido" });
   if (erro.type === "entity.parse.failed") return res.status(400).json({ erro: "JSON inválido" });
   if (erro.type === "entity.too.large") return res.status(413).json({ erro: "Corpo da requisição muito grande" });
   console.error("Erro interno da API:", req.method, req.route?.path ?? "(sem rota)", codigoParaLog(erro));

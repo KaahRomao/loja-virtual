@@ -86,6 +86,7 @@ test("API local com SQLite e respostas de teste das integrações", async (t) =>
   const post = (path, status, body, token) => chamar(path, status, { method: "POST", body, token });
   const cliente = { nome_cliente: "Cliente Teste", email: "cliente@example.invalid", senha: "senha-teste" };
   assert.deepEqual(await chamar("/health", 200), { status: "ok" });
+  assert.deepEqual(await chamar("/produtos/%E0%A4%A", 400), { erro: "Endereço da requisição inválido" });
   await post("/clientes", 400, {});
   await post("/clientes", 400, { ...cliente, senha: "a".repeat(73) });
   await post("/clientes", 201, cliente);
