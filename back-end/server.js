@@ -6,3 +6,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`API rodando na porta ${PORT}`);
 });
+
+// ESTA LINHA É ESSENCIAL:
+module.exports = app;

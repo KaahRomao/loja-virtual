@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const clienteModel = require("../models/clienteModel");
 
 async function login({ email, senha }) {
-  const cliente = clienteModel.buscarPorEmail(email);
+  const cliente = await clienteModel.buscarPorEmail(email);
 
   const senhaConfere = cliente
     ? await bcrypt.compare(senha, cliente.senha)

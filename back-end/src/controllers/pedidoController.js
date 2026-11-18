@@ -64,7 +64,7 @@ async function criar(req, res) {
   }
 }
 
-function detalhar(req, res) {
+async function detalhar(req, res) {
   try {
     const id = Number(req.params.id);
 
@@ -72,7 +72,7 @@ function detalhar(req, res) {
       return res.status(400).json({ erro: "ID do pedido inválido" });
     }
 
-    const pedido = pedidoService.detalharPedido(id, req.clienteId);
+    const pedido = await pedidoService.detalharPedido(id, req.clienteId);
 
     if (!pedido) {
       return res.status(404).json({ erro: "Pedido não encontrado" });
@@ -92,7 +92,7 @@ async function pagar(req, res) {
       return res.status(400).json({ erro: "ID do pedido inválido" });
     }
 
-    const pedido = pedidoService.detalharPedido(id, req.clienteId);
+    const pedido = await pedidoService.detalharPedido(id, req.clienteId);
     if (!pedido) {
       return res.status(404).json({ erro: "Pedido não encontrado" });
     }

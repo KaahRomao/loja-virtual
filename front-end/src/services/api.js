@@ -63,7 +63,11 @@ export async function request(
 export const slugify = (texto) =>
   texto
     .normalize("NFD")
+<<<<<<< HEAD
     .replace(/[\u0300-\u036f]/g, "")
+=======
+    .replace(/[̀-ͯ]/g, "")
+>>>>>>> vercel
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
