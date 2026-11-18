@@ -79,6 +79,7 @@ O teste da API abre um servidor em loopback e cria um SQLite temporário. As res
 [Captura do painel administrativo](documentos/capturas/painel-pedidos.png)
 
 - [API e exemplos](documentos/API.md)
+- [Coleção Postman](documentos/Vora.postman_collection.json)
 - [Manual e roteiro de demonstração](documentos/manual.md)
 - [Resultados de testes](documentos/testes.csv)
 - [Auditoria de cliente e administração](documentos/auditoria-vora.md)

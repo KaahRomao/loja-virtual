@@ -1,6 +1,8 @@
 # API do Vora Supermarket
 
-Base local `http://localhost:3000`. Envie `Content-Type: application/json` em requisições com corpo e `Authorization: Bearer <token>` em rotas protegidas. Os exemplos mostram os campos principais. Preços e frete são centavos, e datas novas estão em UTC.
+Base local `http://127.0.0.1:3000`. Envie `Content-Type: application/json` em requisições com corpo e `Authorization: Bearer <token>` em rotas protegidas. Os exemplos mostram os campos principais. Preços e frete são centavos, e datas novas estão em UTC. [API publicada no Render](https://vora-supermarket.onrender.com/health)
+
+Importe a [coleção Postman](Vora.postman_collection.json) para repetir as chamadas no SQLite local. Use os valores de teste nas variáveis do Postman e crie o admin de teste conforme o README. O login salva os JWTs na coleção. Ao compartilhar uma exportação, remova as senhas e os JWTs dos valores exportados.
 
 ## Loja
 
