@@ -1,6 +1,7 @@
 const db = require("../database/connection");
 const { listar: listarCategorias } = require("./categoriaModel");
 const { listarDoPedido } = require("./pagamentoModel");
+const { idSituacao } = require("./situacaoModel");
 
 const CAMPOS_PRODUTO = [
   "nome_produto",
@@ -18,15 +19,6 @@ const PRODUTO_SELECT = `SELECT p.id, p.nome_produto, p.descricao, p.img_url, p.p
   FROM produto p
   JOIN categoria c ON c.id = p.id_categoria
   JOIN situacao s ON s.id = p.id_situacao`;
-
-async function idSituacao(nome, executor = db) {
-  const r = await executor.execute({
-    sql: "SELECT id FROM situacao WHERE nome_situacao = ?",
-    args: [nome],
-  });
-  if (!r.rows[0]) throw new Error(`Situação "${nome}" não existe`);
-  return r.rows[0].id;
-}
 
 async function buscarAdminPorEmail(email) {
   const r = await db.execute({
@@ -171,57 +163,6 @@ async function buscarPedido(id) {
   return { ...pedido, itens: ri.rows, pagamentos: await listarDoPedido(id) };
 }
 
-async function buscarCheckout(id, executor = db) {
-  const { rows } = await executor.execute({
-    sql: "SELECT id_cliente, preferencia_id, referencia_pagamento FROM pedido WHERE id = ?",
-    args: [id],
-  });
-  return rows[0];
-}
-
-// Troca a situação só se o pedido ainda estiver em "de". Cancelar devolve o estoque.
-function alterarSituacaoPedido(id, de, para, preferenciaVerificada = null) {
-  return db.transaction(async (tx) => {
-    const idDe = await idSituacao(de, tx);
-    const idPara = await idSituacao(para, tx);
-
-    if (para === "Cancelado") {
-      const checkout = await buscarCheckout(id, tx);
-      const pagamentos = await listarDoPedido(id, tx);
-      const pagamentoEmCurso = pagamentos.some((pg) =>
-        pg.situacao === "Pendente" || pg.situacao === "Aprovado"
-      );
-      if (!checkout || checkout.preferencia_id !== preferenciaVerificada || pagamentoEmCurso) {
-        const erro = new Error("Não foi possível cancelar. O checkout ou o pagamento precisa ser conferido.");
-        erro.codigo = "CONFLITO";
-        throw erro;
-      }
-    }
-
-    const r = await tx.execute({
-      sql: "UPDATE pedido SET id_situacao = ? WHERE id = ? AND id_situacao = ?",
-      args: [idPara, id, idDe],
-    });
-    if (r.rowsAffected === 0) {
-      const erro = new Error(
-        "O pedido mudou de situação, atualize e tente de novo",
-      );
-      erro.codigo = "CONFLITO";
-      throw erro;
-    }
-
-    if (para === "Cancelado") {
-      await tx.execute({
-        sql: `UPDATE produto
-              SET estoque = estoque + (SELECT pp.quantidade FROM produto_pedido pp
-                                       WHERE pp.id_pedido = ? AND pp.id_produto = produto.id)
-              WHERE id IN (SELECT id_produto FROM produto_pedido WHERE id_pedido = ?)`,
-        args: [id, id],
-      });
-    }
-  });
-}
-
 async function resumoPedidos() {
   const r = await db.execute(`
     SELECT s.nome_situacao AS situacao, COUNT(*) AS quantidade,
@@ -243,7 +184,5 @@ module.exports = {
   atualizarCategoria,
   listarPedidos,
   buscarPedido,
-  buscarCheckout,
-  alterarSituacaoPedido,
   resumoPedidos,
 };

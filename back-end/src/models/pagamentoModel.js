@@ -1,4 +1,5 @@
 const db = require("../database/connection");
+const { idSituacao } = require("./situacaoModel");
 
 async function referenciaDoCliente(idPedido, idCliente) {
   const { rows } = await db.execute({
@@ -32,10 +33,11 @@ function registrar(pg, situacao, idCliente) {
       return { processado: false, motivo: "valor ou moeda divergente" };
     }
 
+    const idStatusPagamento = await idSituacao(situacao, tx);
     const { rowsAffected } = await tx.execute({
       sql: `INSERT INTO pagamento
               (id_transacao_externa, forma_pagamento, id_pedido, id_situacao, data_aprovacao, data_criado)
-            VALUES (?, ?, ?, (SELECT id FROM situacao WHERE nome_situacao = ?),
+            VALUES (?, ?, ?, ?,
                     CASE WHEN ? = 'Aprovado' THEN DATETIME('now') END, DATETIME('now'))
             ON CONFLICT(id_transacao_externa) DO UPDATE SET
               forma_pagamento = excluded.forma_pagamento, id_situacao = excluded.id_situacao,
@@ -43,15 +45,16 @@ function registrar(pg, situacao, idCliente) {
             WHERE pagamento.id_pedido = excluded.id_pedido
               AND pagamento.id_situacao <> excluded.id_situacao
               AND pagamento.data_aprovacao IS NULL
-              AND (? <> 'Pendente' OR pagamento.id_situacao = (SELECT id FROM situacao WHERE nome_situacao = 'Pendente'))`,
-      args: [String(pg.id), pg.forma, pedido.id, situacao, situacao, situacao],
+              AND ? <> 'Pendente'`,
+      args: [String(pg.id), pg.forma, pedido.id, idStatusPagamento, situacao, situacao],
     });
 
     if (situacao === "Aprovado" && rowsAffected) {
+      const idPago = await idSituacao("Pago", tx);
+      const idPendente = await idSituacao("Pendente", tx);
       await tx.execute({
-        sql: `UPDATE pedido SET id_situacao = (SELECT id FROM situacao WHERE nome_situacao = 'Pago')
-              WHERE id = ? AND id_situacao = (SELECT id FROM situacao WHERE nome_situacao = 'Pendente')`,
-        args: [pedido.id],
+        sql: "UPDATE pedido SET id_situacao = ? WHERE id = ? AND id_situacao = ?",
+        args: [idPago, pedido.id, idPendente],
       });
     }
     return { processado: Boolean(rowsAffected), situacao };

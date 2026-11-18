@@ -99,7 +99,7 @@ export default function CheckoutAddress() {
               </Button>
             </div>
           </form>
-          <OrderSummary />
+          <OrderSummary quote={form} />
         </div>
       )}
     </section>

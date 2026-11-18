@@ -106,10 +106,13 @@ async function pagar(req, res) {
       return res.status(409).json({ erro: "Pedido não está pendente" });
     }
 
-    const preferencia = await pedidoService.gerarPreferencia(pedido);
+    const preferencia = await pedidoService.gerarPreferencia(pedido, req.clienteId);
     if (!preferencia) return res.status(409).json({ erro: "Pedido não está pendente" });
     return res.status(200).json({ ...preferencia, retorno_configurado: Boolean(process.env.MP_RETURN_URL) });
   } catch (erro) {
+    if (erro.codigo === "PAGAMENTO_EM_CURSO") {
+      return res.status(409).json({ erro: erro.message });
+    }
     if (erro.codigo === "MP_NAO_CONFIGURADO") {
       return res.status(503).json({ erro: erro.message });
     }
@@ -129,4 +132,21 @@ async function listar(req, res, next) {
   }
 }
 
-module.exports = { criar, detalhar, listar, pagar };
+async function cancelar(req, res, next) {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    return res.status(400).json({ erro: "ID do pedido inválido" });
+  }
+  try {
+    return res.json(await pedidoService.cancelarPedido(id, req.clienteId));
+  } catch (erro) {
+    const status = {
+      PEDIDO_NAO_ENCONTRADO: 404, CONFLITO: 409, TRANSICAO_INVALIDA: 409,
+      MP_INDISPONIVEL: 502, MP_NAO_CONFIGURADO: 503,
+    }[erro.codigo];
+    if (status) return res.status(status).json({ erro: erro.message });
+    return next(erro);
+  }
+}
+
+module.exports = { criar, detalhar, listar, pagar, cancelar };

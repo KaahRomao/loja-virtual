@@ -1,6 +1,7 @@
 const { randomUUID } = require("node:crypto");
 const db = require("../database/connection");
 const { listarDoPedido } = require("./pagamentoModel");
+const { idSituacao } = require("./situacaoModel");
 
 async function buscarProdutoAtivo(id, executor) {
   const { rows } = await executor.execute({
@@ -62,14 +63,15 @@ function gravar(pedido, quantidades) {
       itens.push({ id, quantidade, preco: produto.preco });
     }
 
+    const idPendente = await idSituacao("Pendente", tx);
     const { lastInsertRowid } = await tx.execute({
       sql: `INSERT INTO pedido
               (endereco_entrega, cep_entrega, valor_frete, prazo_entrega, valor_total,
                id_cliente, id_situacao, chave_checkout, data_criado)
-            VALUES (?, ?, ?, ?, ?, ?, (SELECT id FROM situacao WHERE nome_situacao = 'Pendente'), ?, DATETIME('now'))`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, DATETIME('now'))`,
       args: [
         pedido.endereco_entrega, pedido.cep_entrega, pedido.valor_frete,
-        pedido.prazo_entrega, valorTotal, pedido.id_cliente, pedido.chave_checkout ?? null,
+        pedido.prazo_entrega, valorTotal, pedido.id_cliente, idPendente, pedido.chave_checkout ?? null,
       ],
     });
     const id = Number(lastInsertRowid);
@@ -114,33 +116,86 @@ async function listarPedidos(idCliente) {
 }
 
 async function referenciaPagamento(id) {
+  const idPendente = await idSituacao("Pendente");
   const { rows } = await db.execute({
     sql: `UPDATE pedido SET referencia_pagamento = COALESCE(referencia_pagamento, ?)
-          WHERE id = ? AND id_situacao = (SELECT id FROM situacao WHERE nome_situacao = 'Pendente')
+          WHERE id = ? AND id_situacao = ?
           RETURNING referencia_pagamento`,
-    args: [`vora-${randomUUID()}`, id],
+    args: [`vora-${randomUUID()}`, id, idPendente],
   });
   return rows[0]?.referencia_pagamento;
 }
 
 async function buscarPreferencia(id) {
+  const idPendente = await idSituacao("Pendente");
   const { rows } = await db.execute({
     sql: `SELECT preferencia_id AS id, preferencia_url AS link FROM pedido WHERE id = ?
           AND preferencia_id IS NOT NULL
-          AND id_situacao = (SELECT id FROM situacao WHERE nome_situacao = 'Pendente')`,
-    args: [id],
+          AND id_situacao = ?`,
+    args: [id, idPendente],
   });
   return rows[0];
 }
 
 async function salvarPreferencia(id, preferencia) {
+  const idPendente = await idSituacao("Pendente");
   await db.execute({
     sql: `UPDATE pedido SET preferencia_id = ?, preferencia_url = ?
           WHERE id = ? AND preferencia_id IS NULL
-          AND id_situacao = (SELECT id FROM situacao WHERE nome_situacao = 'Pendente')`,
-    args: [preferencia.id, preferencia.link, id],
+          AND id_situacao = ?`,
+    args: [preferencia.id, preferencia.link, id, idPendente],
   });
   return buscarPreferencia(id);
 }
 
-module.exports = { buscarReenvio, gravar, buscarPedido, listarPedidos, referenciaPagamento, buscarPreferencia, salvarPreferencia };
+async function buscarCheckout(id, executor = db) {
+  const { rows: [checkout] } = await executor.execute({
+    sql: `SELECT p.id_cliente, p.preferencia_id, p.referencia_pagamento, s.nome_situacao AS situacao
+          FROM pedido p JOIN situacao s ON s.id = p.id_situacao WHERE p.id = ?`,
+    args: [id],
+  });
+  return checkout;
+}
+
+function conflito(mensagem) {
+  return Object.assign(new Error(mensagem), { codigo: "CONFLITO" });
+}
+
+function alterarSituacaoPedido(id, de, para, preferenciaVerificada = null) {
+  return db.transaction(async (tx) => {
+    const idDe = await idSituacao(de, tx);
+    const idPara = await idSituacao(para, tx);
+    if (para === "Cancelado") {
+      const checkout = await buscarCheckout(id, tx);
+      const pagamentos = await listarDoPedido(id, tx);
+      const pagamentoEmCurso = pagamentos.some((pg) => ["Pendente", "Aprovado"].includes(pg.situacao));
+      if (!checkout || checkout.preferencia_id !== preferenciaVerificada || pagamentoEmCurso) {
+        throw conflito("O checkout ou o pagamento precisa ser conferido antes de cancelar.");
+      }
+    }
+
+    const resultado = await tx.execute({
+      sql: "UPDATE pedido SET id_situacao = ? WHERE id = ? AND id_situacao = ?",
+      args: [idPara, id, idDe],
+    });
+    if (!resultado.rowsAffected) throw conflito("O pedido mudou de situação. Atualize e tente de novo.");
+
+    if (para === "Cancelado") {
+      const { rows: itens } = await tx.execute({
+        sql: "SELECT quantidade, id_produto FROM produto_pedido WHERE id_pedido = ?",
+        args: [id],
+      });
+      for (const item of itens) {
+        await tx.execute({
+          sql: "UPDATE produto SET estoque = estoque + ? WHERE id = ?",
+          args: [item.quantidade, item.id_produto],
+        });
+      }
+    }
+  });
+}
+
+module.exports = {
+  buscarReenvio, gravar, buscarPedido, listarPedidos, referenciaPagamento,
+  buscarPreferencia, salvarPreferencia, buscarCheckout, alterarSituacaoPedido,
+};

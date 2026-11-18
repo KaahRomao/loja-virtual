@@ -1,11 +1,10 @@
 const { createHmac, timingSafeEqual } = require("node:crypto");
 const pagamentoService = require("../services/pagamentoService");
 
-function assinaturaValida(req, id) {
-  const segredo = process.env.MP_WEBHOOK_SECRET;
+function assinaturaValida(req, id, segredo) {
   const assinatura = req.get("x-signature");
   const reqId = req.get("x-request-id");
-  if (!segredo || !assinatura || !reqId) return false;
+  if (!assinatura || !reqId) return false;
 
   const partes = Object.fromEntries(assinatura.split(",").map((p) => p.trim().split("=")));
   if (!/^\d+$/.test(partes.ts ?? "") || !/^[a-f\d]{64}$/i.test(partes.v1 ?? "")) return false;
@@ -18,15 +17,21 @@ function assinaturaValida(req, id) {
 async function webhook(req, res) {
   const tipo = req.body?.type ?? req.query.type;
   if (tipo !== "payment") return res.sendStatus(200);
+  const segredo = process.env.MP_WEBHOOK_SECRET?.trim();
+  if (!segredo) {
+    console.error("Webhook do Mercado Pago: segredo de assinatura ausente");
+    return res.sendStatus(503);
+  }
   const id = req.query["data.id"];
-  if (typeof id !== "string" || !/^\d+$/.test(id) || !assinaturaValida(req, id)) {
+  if (typeof id !== "string" || !/^\d+$/.test(id) || !assinaturaValida(req, id, segredo)) {
     return res.sendStatus(401);
   }
 
   try {
     await pagamentoService.processarPagamento(id);
     return res.sendStatus(200);
-  } catch {
+  } catch (erro) {
+    console.error("Falha ao processar webhook do Mercado Pago:", erro.codigo ?? erro.code ?? erro.name);
     return res.sendStatus(502);
   }
 }

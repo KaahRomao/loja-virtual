@@ -7,5 +7,6 @@ router.post("/", autenticar, pedidoController.criar);
 router.get("/", autenticar, pedidoController.listar);
 router.get("/:id", autenticar, pedidoController.detalhar);
 router.post("/:id/pagamento", autenticar, pedidoController.pagar);
+router.post("/:id/cancelar", autenticar, pedidoController.cancelar);
 
 module.exports = router;

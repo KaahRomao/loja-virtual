@@ -24,6 +24,7 @@ test("API local com SQLite e respostas de teste das integrações", async (t) =>
   process.env.MP_TEST_ACCESS_TOKEN = "fixture";
   process.env.MP_WEBHOOK_SECRET = randomUUID();
   process.env.MP_RETURN_URL = "https://loja.example.invalid";
+  process.env.MP_WEBHOOK_URL = "https://api.example.invalid/pagamentos/webhook";
 
   const db = require("../src/database/connection");
   await db.execute({
@@ -158,10 +159,14 @@ test("API local com SQLite e respostas de teste das integrações", async (t) =>
   assert.deepEqual(links[0], links[1]);
   assert.equal(chamadas, 1);
   assert.equal(preferencia.back_urls.success, `https://loja.example.invalid/pedido/${pedido.id}`);
+  assert.equal(preferencia.notification_url, process.env.MP_WEBHOOK_URL);
+  const cancelarCliente = (id, status, sessao = token) => post(`/pedidos/${id}/cancelar`, status, {}, sessao);
   const cancelar = (id, status) => chamar(`/admin/pedidos/${id}/situacao`, status, {
     method: "PATCH", body: { situacao: "Cancelado" }, token: admin.token,
   });
   await cancelar(pedido.id, 409);
+  await cancelarCliente(pedido.id, 409);
+  await cancelarCliente(pedido.id, 404, sessaoOutro.token);
   assert.equal((await chamar(`/produtos/${banana.id}`, 200)).estoque, banana.estoque - 1);
   const pagamento = {
     id: 1, external_reference: preferencia.external_reference,
@@ -170,15 +175,21 @@ test("API local com SQLite e respostas de teste das integrações", async (t) =>
   await post("/pagamentos/webhook?data.id=1", 401, { type: "payment" });
   for (const [status, gravado] of [["pending", "Pendente"], ["rejected", "Recusado"], ["approved", "Aprovado"]]) {
     pagamentos.push({ ...pagamento, id: status === "approved" ? 2 : 1, status });
+    if (status === "pending") {
+      await post(caminhoPagamento, 409, {}, token);
+      assert.equal(chamadas, 1);
+    }
     if (status === "approved") {
       const ts = String(Date.now());
       const reqId = randomUUID();
       const hash = createHmac("sha256", process.env.MP_WEBHOOK_SECRET)
         .update(`id:2;request-id:${reqId};ts:${ts};`).digest("hex");
-      await chamar("/pagamentos/webhook?data.id=2", 200, {
+      const webhook = {
         method: "POST", body: { type: "payment" },
         headers: { "x-signature": `ts=${ts},v1=${hash}`, "x-request-id": reqId },
-      });
+      };
+      await chamar("/pagamentos/webhook?data.id=2", 200, webhook);
+      await chamar("/pagamentos/webhook?data.id=2", 200, webhook);
     } else {
       await post("/pagamentos/sincronizar", 200, { pedido_id: pedido.id }, token);
     }
@@ -186,10 +197,22 @@ test("API local com SQLite e respostas de teste das integrações", async (t) =>
     assert.equal(detalhe.pagamentos[0].situacao, gravado);
     assert.equal(detalhe.situacao, status === "approved" ? "Pago" : "Pendente");
   }
+  pagamentos.push({ ...pagamento, id: 4, status: "approved" });
   await post("/pagamentos/sincronizar", 200, { pedido_id: pedido.id }, token);
+  assert.equal((await chamar(`/admin/pedidos/${pedido.id}`, 200, { token: admin.token })).alerta_pagamento, "MULTIPLAS_APROVACOES");
+  await cancelarCliente(pedido.id, 409);
   await chamar(`/admin/pedidos/${pedido.id}/situacao`, 200, {
     method: "PATCH", body: { situacao: "Enviado" }, token: admin.token,
   });
+  await cancelarCliente(pedido.id, 409);
+
+  const semCheckout = await post("/pedidos", 201, { ...compra, chave_checkout: randomUUID() }, token);
+  await post(`/pedidos/${semCheckout.id}/cancelar`, 401, {});
+  await cancelarCliente(semCheckout.id, 404, sessaoOutro.token);
+  assert.equal((await cancelarCliente(semCheckout.id, 200)).situacao, "Cancelado");
+  await cancelarCliente(semCheckout.id, 409);
+  await cancelar(semCheckout.id, 409);
+  assert.equal((await chamar(`/produtos/${banana.id}`, 200)).estoque, banana.estoque - 1);
 
   const cancelavel = await post("/pedidos", 201, { ...compra, chave_checkout: randomUUID() }, token);
   await post(`/pedidos/${cancelavel.id}/pagamento`, 200, {}, token);
@@ -212,7 +235,7 @@ test("API local com SQLite e respostas de teste das integrações", async (t) =>
   }, token);
 
   const persisted = new DatabaseSync(process.env.DB_PATH, { readOnly: true });
-  assert.equal(persisted.prepare("SELECT count(*) AS n FROM pagamento").get().n, 3);
+  assert.equal(persisted.prepare("SELECT count(*) AS n FROM pagamento").get().n, 4);
   assert.equal(persisted.prepare("PRAGMA quick_check").get().quick_check, "ok");
   persisted.close();
 });

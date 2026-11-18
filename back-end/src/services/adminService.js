@@ -1,8 +1,8 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const adminModel = require("../models/adminModel");
-const mercadoPago = require("./mercadoPagoService");
-const pagamentos = require("./pagamentoService");
+const pedidoModel = require("../models/pedidoModel");
+const pedidoService = require("./pedidoService");
 
 function erroDeNegocio(codigo, mensagem) {
   const erro = new Error(mensagem);
@@ -11,7 +11,6 @@ function erroDeNegocio(codigo, mensagem) {
 }
 
 const TRANSICOES = {
-  Pendente: ["Cancelado"],
   Pago: ["Enviado"],
   Enviado: ["Entregue"],
   Entregue: [],
@@ -87,6 +86,10 @@ async function atualizarCategoria(id, dados) {
 }
 
 async function alterarSituacaoPedido(id, nova) {
+  if (nova === "Cancelado") {
+    await pedidoService.cancelarPedido(id);
+    return adminModel.buscarPedido(id);
+  }
   const pedido = await adminModel.buscarPedido(id);
   if (!pedido)
     throw erroDeNegocio("PEDIDO_NAO_ENCONTRADO", "Pedido não encontrado");
@@ -97,22 +100,7 @@ async function alterarSituacaoPedido(id, nova) {
       `Pedido ${pedido.situacao} não pode ir para ${nova}`,
     );
   }
-  let preferenciaVerificada = null;
-  if (nova === "Cancelado") {
-    const checkout = await adminModel.buscarCheckout(id);
-    if (checkout?.preferencia_id) {
-      const expirada = await mercadoPago.preferenciaExpirada(checkout.preferencia_id, checkout.referencia_pagamento);
-      if (!expirada) {
-        throw erroDeNegocio("CONFLITO", "O link de pagamento ainda está ativo. Encerre a preferência antes de cancelar o pedido.");
-      }
-      const sincronizacao = await pagamentos.processarPagamento(undefined, checkout.id_cliente, id);
-      if (sincronizacao?.pagamento_em_curso) {
-        throw erroDeNegocio("CONFLITO", "Há um pagamento pendente ou aprovado para este pedido.");
-      }
-      preferenciaVerificada = checkout.preferencia_id;
-    }
-  }
-  await adminModel.alterarSituacaoPedido(id, pedido.situacao, nova, preferenciaVerificada);
+  await pedidoModel.alterarSituacaoPedido(id, pedido.situacao, nova);
   return adminModel.buscarPedido(id);
 }
 

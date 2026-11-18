@@ -48,15 +48,19 @@ export function CheckoutSteps({ step }) {
   );
 }
 
-export function OrderSummary() {
+export function OrderSummary({ quote } = {}) {
   const { totalItems, total, address } = useStore();
-  const frete = address.freight == null ? null : address.freight / 100;
+  const { freight, deliveryDays } = quote ?? address;
+  const frete = freight == null ? null : freight / 100;
   return (
     <aside className={cx(panel, "grid gap-2.5")}>
       <h2 className="font-display text-[20px] font-semibold leading-[normal]">Resumo</h2>
       <div className="flex justify-between"><span>Itens</span><b>{totalItems}</b></div>
       <div className="flex justify-between"><span>Subtotal</span><b>{formatPrice(total)}</b></div>
       <div className="flex justify-between"><span>Entrega</span><b className="text-primary">{frete === null ? "Calcule pelo CEP" : formatPrice(frete)}</b></div>
+      {frete !== null && deliveryDays > 0 && (
+        <div className="flex justify-between"><span>Prazo</span><b>Até {deliveryDays} {deliveryDays === 1 ? "dia útil" : "dias úteis"}</b></div>
+      )}
       <div className="flex justify-between border-t border-border pt-2.5 text-[18px]"><span>Total</span><b>{formatPrice(total + (frete ?? 0))}</b></div>
     </aside>
   );

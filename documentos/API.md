@@ -17,7 +17,8 @@ Base local `http://localhost:3000`. Envie `Content-Type: application/json` em re
 | POST `/pedidos` | Token de cliente e corpo do exemplo abaixo | 201 · `{"id":1,"situacao":"Pendente","valor_total":2099,"itens":[{"id_produto":1,"quantidade":1,"valor_unitario":599}]}` |
 | GET `/pedidos` | Token de cliente | 200 · `[{"id":1,"situacao":"Pendente","valor_total":2099,"data_criado":"2026-11-18 12:00:00"}]` |
 | GET `/pedidos/1` | Token do dono | 200 · `{"id":1,"situacao":"Pago","valor_total":2199,"pagamentos":[{"id_transacao_externa":"123456","situacao":"Aprovado"}]}` |
-| POST `/pedidos/1/pagamento` | Token do dono do pedido pendente | 200 · `{"id":"<preferência>","link":"<url checkout>","retorno_configurado":false}` |
+| POST `/pedidos/1/pagamento` | Token do dono do pedido pendente | 200 · `{"id":"<preferência>","link":"<url checkout>","retorno_configurado":false}`. Retorna 409 se já houver pagamento aprovado ou em processamento. |
+| POST `/pedidos/1/cancelar` | Token do dono do pedido pendente | 200 · `{"id":1,"situacao":"Cancelado"}`. Devolve o estoque. Retorna 404 para pedido alheio e 409 se houver link ainda ativo, pagamento em curso ou situação incompatível. |
 | POST `/pagamentos/sincronizar` | Token do dono e `{"pedido_id":1}`. O `payment_id` pode ser enviado junto quando disponível | 200 · `{"processado":true}` |
 | POST `/pagamentos/webhook?data.id=123456` | Evento `{"type":"payment","data":{"id":"123456"}}` com cabeçalhos de assinatura do provedor | 200 · evento recebido |
 

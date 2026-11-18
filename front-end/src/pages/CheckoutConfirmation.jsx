@@ -9,23 +9,24 @@ import { readSession, request } from "../services/api";
 
 export default function CheckoutConfirmation() {
   const { id } = useParams();
-  const { user, logout } = useStore();
+  const { user, logout, refreshProducts } = useStore();
   const pedidoId = id ?? readSession(`pedido_${user.id}`);
   if (!pedidoId) {
     return <p className="container-shell py-16">Nenhum pedido para acompanhar nesta sessão.</p>;
   }
-  return <Pedido key={`${user.id}-${pedidoId}`} id={pedidoId} token={user.token} expirar={logout} />;
+  return <Pedido key={`${user.id}-${pedidoId}`} id={pedidoId} token={user.token} expirar={logout} refreshProducts={refreshProducts} />;
 }
 
-function Pedido({ id, token, expirar }) {
+function Pedido({ id, token, expirar, refreshProducts }) {
   const [params] = useSearchParams();
   const idPagamento = params.get("payment_id") ?? params.get("collection_id");
   const [pedido, setPedido] = useState(null);
   const [error, setError] = useState("");
-  const [errorPagamento, setErrorPagamento] = useState("");
+  const [errorAction, setErrorAction] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [checkout, setCheckout] = useState(null);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [revision, setRevision] = useState(0);
   const caminho = `/pedidos/${id}`;
 
@@ -38,7 +39,7 @@ function Pedido({ id, token, expirar }) {
             method: "POST", token, body: { pedido_id: Number(id), payment_id: idPagamento },
             signal: controller.signal,
           }).catch((erro) => {
-            if (!controller.signal.aborted) setErrorPagamento(erro.message);
+            if (!controller.signal.aborted) setErrorAction(erro.message);
           });
         }
         const dados = await request(caminho, { token, signal: controller.signal });
@@ -55,7 +56,7 @@ function Pedido({ id, token, expirar }) {
 
   async function atualizar() {
     setBusy(true);
-    setErrorPagamento("");
+    setErrorAction("");
     try {
       if (pedido.situacao === "Pendente") {
         await request("/pagamentos/sincronizar", {
@@ -65,7 +66,7 @@ function Pedido({ id, token, expirar }) {
       setPedido(await request(caminho, { token }));
     } catch (erro) {
       if (erro.status === 401) expirar();
-      else setErrorPagamento(erro.message);
+      else setErrorAction(erro.message);
     } finally {
       setBusy(false);
     }
@@ -73,13 +74,33 @@ function Pedido({ id, token, expirar }) {
 
   async function pagar() {
     setBusy(true);
-    setErrorPagamento("");
+    setErrorAction("");
     try {
       setCheckout(await request(`${caminho}/pagamento`, { method: "POST", token }));
     } catch (erro) {
       if (erro.status === 401) expirar();
-      else setErrorPagamento(erro.message);
+      else if (erro.status === 409) {
+        const atual = await request(caminho, { token }).catch(() => null);
+        if (atual) setPedido(atual);
+        else setErrorAction(erro.message);
+      } else setErrorAction(erro.message);
     } finally {
+      setBusy(false);
+    }
+  }
+
+  async function cancelar() {
+    setBusy(true);
+    setErrorAction("");
+    try {
+      setPedido(await request(`${caminho}/cancelar`, { method: "POST", token }));
+      setCheckout(null);
+      refreshProducts();
+    } catch (erro) {
+      if (erro.status === 401) expirar();
+      else setErrorAction(erro.message);
+    } finally {
+      setConfirmCancel(false);
       setBusy(false);
     }
   }
@@ -95,7 +116,9 @@ function Pedido({ id, token, expirar }) {
     );
   }
 
-  const pagamento = pedido.pagamentos.find((p) => p.situacao === "Aprovado") ?? pedido.pagamentos[0];
+  const pagamento = pedido.pagamentos.find((p) => p.situacao === "Aprovado") ??
+    pedido.pagamentos.find((p) => p.situacao === "Pendente") ?? pedido.pagamentos[0];
+  const podePagar = pedido.situacao === "Pendente" && !["Pendente", "Aprovado"].includes(pagamento?.situacao);
   return (
     <section className="container-shell min-h-[620px] pt-[30px] pb-[90px]">
       <CheckoutSteps step={pedido.situacao === "Pendente" ? 3 : 4} />
@@ -115,18 +138,32 @@ function Pedido({ id, token, expirar }) {
         <p><b>Frete</b> · {formatPrice(pedido.valor_frete / 100)} · até {pedido.prazo_entrega} dias úteis</p>
         <p><b>Total</b> · {formatPrice(pedido.valor_total / 100)}</p>
         <p><b>Entrega</b> · {pedido.endereco_entrega} · {formatZip(pedido.cep_entrega)}</p>
-        {errorPagamento && <p className={formError} role="alert">{errorPagamento}</p>}
+        {errorAction && <p className={formError} role="alert">{errorAction}</p>}
         <div className="flex flex-wrap gap-2">
-          {pedido.situacao === "Pendente" && (checkout ? (
+          {podePagar && (checkout ? (
             <a className={pillLink("primary", "md")} href={checkout.link}
               target={checkout.retorno_configurado ? undefined : "_blank"} rel="noopener noreferrer">
               Abrir Mercado Pago
             </a>
           ) : <Button onClick={pagar} disabled={busy}>Pagar com Mercado Pago</Button>)}
           <Button variant="outline" onClick={atualizar} disabled={busy}>{busy ? "Aguarde…" : "Atualizar situação"}</Button>
+          {pedido.situacao === "Pendente" && !confirmCancel && (
+            <Button variant="outline" onClick={() => { setErrorAction(""); setConfirmCancel(true); }} disabled={busy}>
+              Cancelar pedido
+            </Button>
+          )}
           <Link className={pillLink("outline", "md")} to="/catalogo">Voltar à loja</Link>
         </div>
-        {checkout && !checkout.retorno_configurado && <p className="text-sm">Ao concluir o pagamento na outra aba, volte e selecione Atualizar situação.</p>}
+        {pedido.situacao === "Pendente" && confirmCancel && (
+          <div className="grid gap-2 rounded-control border p-3">
+            <p>Confirma o cancelamento deste pedido?</p>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => setConfirmCancel(false)} disabled={busy}>Manter pedido</Button>
+              <Button onClick={cancelar} disabled={busy}>Confirmar cancelamento</Button>
+            </div>
+          </div>
+        )}
+        {podePagar && checkout && !checkout.retorno_configurado && <p className="text-sm">Ao concluir o pagamento na outra aba, volte e selecione Atualizar situação.</p>}
       </div>
     </section>
   );
