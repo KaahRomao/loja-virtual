@@ -72,13 +72,13 @@ export default function PromotionCarousel({ offers }) {
               </>
             )}
           </div>
-          {product ? (
-            <div className="min-h-0 bg-cream mobile:order-first mobile:h-[205px]">
-              <ProductPhoto product={product} eager />
-            </div>
-          ) : (
-            <img src={heroImage} alt="" className="size-full object-cover object-right mobile:order-first mobile:h-[205px]" fetchPriority="high" />
-          )}
+          <div className="relative min-h-[340px] overflow-hidden bg-cream mobile:order-first mobile:h-[185px] mobile:min-h-0">
+            {product ? (
+              <ProductPhoto product={product} className="absolute inset-0 py-3 mobile:py-1.5" eager />
+            ) : (
+              <img src={heroImage} alt="" className="absolute inset-0 size-full object-cover object-right" fetchPriority="high" />
+            )}
+          </div>
         </div>
         {count > 1 && (
           <div className="flex items-center justify-between gap-2 border-t bg-card px-4 py-1.5" aria-label="Controles das promoções">
