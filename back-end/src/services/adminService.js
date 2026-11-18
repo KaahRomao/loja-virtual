@@ -1,8 +1,8 @@
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const adminModel = require("../models/adminModel");
 const pedidoModel = require("../models/pedidoModel");
 const pedidoService = require("./pedidoService");
+const { emitirToken } = require("./tokenService");
 
 function erroDeNegocio(codigo, mensagem) {
   const erro = new Error(mensagem);
@@ -25,15 +25,8 @@ async function login({ email, senha }) {
     throw erroDeNegocio("CREDENCIAIS_INVALIDAS", "Email ou senha inválidos");
   }
 
-  const token = jwt.sign(
-    { id: admin.id, tipo: "admin" },
-    process.env.JWT_SECRET,
-    {
-      expiresIn: "2h",
-    },
-  );
   return {
-    token,
+    token: emitirToken(admin.id, "admin"),
     role: "admin",
     admin: { id: admin.id, nome: admin.nome, email: admin.email },
   };

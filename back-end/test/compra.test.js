@@ -8,6 +8,7 @@ const { DatabaseSync } = require("node:sqlite");
 const { createHmac, randomUUID } = require("node:crypto");
 const { inspect } = require("node:util");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const { Payment, Preference } = require("mercadopago");
 
 test("API local com SQLite e respostas de teste das integrações", async (t) => {
@@ -98,6 +99,11 @@ test("API local com SQLite e respostas de teste das integrações", async (t) =>
   const credenciaisAdmin = { email: "admin@example.invalid", senha: "senha-teste" };
   const admin = await post("/login", 200, credenciaisAdmin);
   assert.equal(admin.role, "admin");
+  for (const [jwtDeAcesso, papel] of [[token, "cliente"], [admin.token, "admin"]]) {
+    const { exp, iat, tipo } = jwt.decode(jwtDeAcesso);
+    assert.equal(tipo, papel);
+    assert.equal(exp - iat, 7200);
+  }
   assert.equal((await post("/admin/login", 200, credenciaisAdmin)).admin.id, admin.admin.id);
   await post("/clientes", 409, { ...cliente, email: credenciaisAdmin.email.toUpperCase() });
   await chamar("/admin/produtos", 401, { token });
