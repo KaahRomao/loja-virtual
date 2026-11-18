@@ -1,48 +1,28 @@
 import { useState } from "react";
-import { sheets } from "../assets";
+import { Package } from "lucide-react";
+import { productImages } from "../data/productImages";
+import { cx } from "./ui/styles";
 
-const recortes = {
-  "/img/produtos/arroz-5kg.jpg": [sheets.comida, "0% 0%"],
-  "/img/produtos/feijao-carioca.jpg": [sheets.comida, "50% 0%"],
-  "/img/produtos/macarrao-espaguete.jpg": [sheets.comida, "100% 0%"],
-  "/img/produtos/alface-crespa.jpg": [sheets.comida, "100% 100%"],
-  "/img/produtos/tomate-italiano.jpg": [sheets.comida, "100% 100%"],
-  "/img/produtos/iogurte-natural.jpg": [sheets.snacks, "50% 100%"],
-};
+export default function ProductPhoto({ product, photo, className, eager = false }) {
+  const image = photo ?? productImages(product)[0];
+  const [failedUrl, setFailedUrl] = useState(null);
 
-// Foto vinda de product.imageUrl (pasta public/img/produtos). Se faltar, mostra a inicial do produto.
-export default function ProductPhoto({ product }) {
-  const [imagemComErro, setImagemComErro] = useState(null);
-
-  if (product.imageUrl && imagemComErro !== product.imageUrl) {
+  if (image && failedUrl !== image.url) {
     return (
       <img
-        src={product.imageUrl}
-        alt={product.name}
-        loading="lazy"
-        onError={() => setImagemComErro(product.imageUrl)}
-        className="size-full bg-surface object-cover"
-      />
-    );
-  }
-
-  const recorte = recortes[product.imageUrl];
-  if (recorte) {
-    const [imagem, posicao] = recorte;
-    return (
-      <div role="img" aria-label={product.name} className="size-full bg-surface"
-        style={{ backgroundImage: `url(${imagem})`, backgroundSize: "300% 300%", backgroundPosition: posicao }}
+        src={image.url}
+        alt={image.alt}
+        loading={eager ? "eager" : "lazy"}
+        decoding="async"
+        className={cx("size-full bg-cream object-contain", className)}
+        onError={() => setFailedUrl(image.url)}
       />
     );
   }
 
   return (
-    <div
-      role="img"
-      aria-label={product.name}
-      className="grid size-full place-items-center bg-pale font-display text-[44px] font-semibold text-primary"
-    >
-      {product.name.charAt(0)}
+    <div role="img" aria-label={product.name + " — foto indisponível"} className="grid size-full place-items-center bg-cream text-primary">
+      <Package size={32} aria-hidden="true" />
     </div>
   );
 }

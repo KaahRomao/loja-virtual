@@ -1,7 +1,7 @@
 import { cx } from "./styles";
 
 const base =
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-control transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
 const variants = {
   primary: "bg-primary text-primary-foreground hover:bg-primary/90",
@@ -10,15 +10,15 @@ const variants = {
 };
 
 const sizes = {
-  md: "h-9 rounded-md px-4 text-[.875rem]",
-  sm: "h-8 rounded-md px-3 text-[.75rem]",
-  lg: "h-10 rounded-md px-8 text-[.875rem]",
-  icon: "size-9 rounded-md text-[.875rem]",
-  iconSm: "size-7 rounded-md text-[.875rem]",
-  step: "h-8 w-[27px] rounded-md text-[.875rem]", // botões - e + do seletor de quantidade
-  search: "h-[46px] w-[50px] rounded-[0_5px_5px_0] text-[.875rem] mobile:h-[42px]", // lupa da busca
+  md: "min-h-10 px-4 text-sm",
+  sm: "min-h-9 px-3 text-xs",
+  lg: "min-h-11 px-5 text-sm",
+  icon: "size-11",
+  iconSm: "size-9",
+  step: "size-9 text-sm",
+  search: "h-full w-12 rounded-l-none text-sm",
 };
 
-export default function Button({ variant = "primary", size = "md", weight = "font-medium", className, type = "button", ...props }) {
+export default function Button({ variant = "primary", size = "md", weight = "font-extrabold", className, type = "button", ...props }) {
   return <button type={type} className={cx(base, variants[variant], sizes[size], weight, className)} {...props} />;
 }

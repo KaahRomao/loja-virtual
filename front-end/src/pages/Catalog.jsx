@@ -2,8 +2,9 @@ import { useState } from "react";
 import { SlidersHorizontal, Search } from "lucide-react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import ProductGrid from "../components/ProductGrid";
+import { discountPercent } from "../data/products";
 import { useStore } from "../hooks/useStore";
-import { cx, eyebrow, pillLink, sectionTitle } from "../components/ui/styles";
+import { cx, formInput, pillLink, sectionTitle } from "../components/ui/styles";
 
 const normalize = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
@@ -14,15 +15,18 @@ export default function Catalog({ category }) {
   const offers = params.get("ofertas") === "true";
   const q = params.get("q") || "";
   const [sort, setSort] = useState("featured");
+  const [maxPrice, setMaxPrice] = useState("");
 
   let list = products.filter(
     (p) =>
       (!category || p.category === category) &&
-      (!offers || p.oldPrice) &&
+      (!offers || (discountPercent(p) > 0 && p.stock > 0)) &&
+      (maxPrice === "" || p.price <= Number(maxPrice)) &&
       (!q || normalize(p.name).includes(normalize(q))),
   );
   if (sort === "lowest") list = [...list].sort((a, b) => a.price - b.price);
   if (sort === "highest") list = [...list].sort((a, b) => b.price - a.price);
+  if (sort === "discount") list = [...list].sort((a, b) => discountPercent(b) - discountPercent(a));
 
   const title = q
     ? `Resultados para “${q}”`
@@ -31,10 +35,6 @@ export default function Catalog({ category }) {
       : category
         ? categoryNames[category]
         : "Tudo para sua lista";
-  const subtitle = q
-    ? `${list.length} ${list.length === 1 ? "produto encontrado" : "produtos encontrados"}`
-    : "Escolha com calma. Aqui tem qualidade e economia para você.";
-
   const allActive = pathname === "/catalogo" && !offers;
   const filters = [
     {
@@ -52,7 +52,7 @@ export default function Catalog({ category }) {
     {
       to: "/catalogo?ofertas=true",
       label: "Ofertas",
-      count: products.filter((p) => p.oldPrice).length,
+      count: products.filter((p) => discountPercent(p) > 0 && p.stock > 0).length,
       active: offers,
     },
   ];
@@ -71,11 +71,7 @@ export default function Catalog({ category }) {
 
       <div className="mt-[42px] mb-[35px] mobile:my-[30px]">
         <div>
-          <span className={eyebrow}>CATÁLOGO VORA</span>
           <h1 className={sectionTitle}>{title}</h1>
-          <p className="mt-[7px] text-[14px] text-muted-foreground">
-            {subtitle}
-          </p>
         </div>
       </div>
 
@@ -93,6 +89,7 @@ export default function Catalog({ category }) {
                   f.active ? "bg-accent text-primary" : "text-foreground",
                 )}
                 to={f.to}
+                aria-current={f.active ? "page" : undefined}
               >
                 {f.label}{" "}
                 <span className="text-[11px] text-muted-foreground">
@@ -101,23 +98,29 @@ export default function Catalog({ category }) {
               </Link>
             ))}
           </div>
+          <label className="mt-4 grid max-w-48 gap-1.5 text-sm font-extrabold text-deep mobile:mt-2">
+            Preço até (R$)
+            <input className={formInput} type="number" inputMode="decimal" min="0" step="0.01" placeholder="Sem limite" value={maxPrice}
+              onChange={(event) => setMaxPrice(event.target.value)} />
+          </label>
         </aside>
 
         <div>
-          <div className="mb-5 flex items-center justify-between border-b border-border pb-[15px] text-[13px]">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-2 border-b pb-3 text-[13px]">
             <span>
-              <b>{list.length}</b> produtos
+              <b>{list.length}</b> {list.length === 1 ? "produto" : "produtos"}
             </span>
             <label className="flex items-center gap-2.5 text-muted-foreground">
               Ordenar por{" "}
               <select
-                className="rounded-[4px] border border-border bg-card py-[9px] pr-[29px] pl-2.5 text-foreground"
+                className="rounded-control border bg-card px-2.5 py-[9px] text-foreground"
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
               >
                 <option value="featured">Destaques</option>
                 <option value="lowest">Menor preço</option>
                 <option value="highest">Maior preço</option>
+                <option value="discount">Maior desconto</option>
               </select>
             </label>
           </div>
@@ -128,7 +131,7 @@ export default function Catalog({ category }) {
             <div className="px-[15px] py-[70px] text-center text-muted-foreground">
               <Search size={36} className="mx-auto text-primary" />
               <h2 className="mt-[15px] font-display text-[24px] font-medium leading-[normal] text-deep">
-                Não achamos isso por aqui.
+                {offers && !q && !maxPrice ? "Nenhuma oferta ativa no momento." : "Não achamos isso por aqui."}
               </h2>
               <p className="mt-2 mb-6">
                 Confira se o nome está certinho ou experimente uma destas

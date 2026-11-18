@@ -23,10 +23,11 @@ const steps = ["Carrinho", "Endereço", "Pagamento", "Confirmação"];
 // step: 0..3 = etapa atual; 4 = tudo concluído
 export function CheckoutSteps({ step }) {
   return (
-    <ol className="flex flex-wrap gap-2 p-0">
+    <ol aria-label="Etapas da compra" className="flex flex-wrap gap-2 p-0 mobile:grid mobile:grid-cols-2">
       {steps.map((label, i) => (
         <li
           key={label}
+          aria-current={i === step ? "step" : undefined}
           className={cx(
             "flex items-center gap-2 rounded-full border bg-card py-1.5 pr-3.5 pl-1.5 text-[13px] font-bold",
             i === step ? "border-primary text-primary" : "border-border text-muted-foreground",

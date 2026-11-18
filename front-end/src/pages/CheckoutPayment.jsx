@@ -48,8 +48,8 @@ export default function CheckoutPayment() {
       navigate(`/pedido/${pedido.id}`, { replace: true });
     } catch (erro) {
       if (erro.status === 401) {
-        logout("cliente");
-        navigate("/entrar", { state: { returnTo: "/checkout/endereco" } });
+        logout("cliente", { preserveAddress: true });
+        navigate("/entrar", { replace: true, state: { returnTo: "/checkout/pagamento" } });
       } else setError(erro.message);
     } finally {
       setBusy(false);
@@ -65,7 +65,7 @@ export default function CheckoutPayment() {
           <div className={formCard}>
             <div className="flex gap-3 rounded-[14px] border-2 border-primary bg-accent p-4">
               <CreditCard className="shrink-0 text-primary" />
-              <div><b>Mercado Pago</b><p className="text-sm">Use a conta de comprador e o cartão de teste no Checkout Pro.</p></div>
+              <div><b>Mercado Pago</b><p className="text-sm">Você concluirá o pagamento no Checkout Pro do Mercado Pago.</p></div>
             </div>
             <div className="grid gap-1 rounded-[14px] bg-muted p-3.5 text-[14px]">
               <b>Entregar para {address.name}</b>
@@ -75,15 +75,9 @@ export default function CheckoutPayment() {
             {error && <p className={formError} role="alert">{error}</p>}
             <div className="flex flex-wrap gap-3">
               <Link className={pillLink("outline", "md")} to="/checkout/endereco"><ArrowLeft size={16} /> Voltar</Link>
-              {user ? (
-                <Button size="lg" onClick={confirmar} disabled={busy}>
-                  {busy ? "Registrando pedido…" : `Confirmar pedido · ${formatPrice(total + address.freight / 100)}`}
-                </Button>
-              ) : (
-                <Link className={pillLink("primary", "lg")} to="/entrar" state={{ returnTo: "/checkout/pagamento" }}>
-                  Entrar para continuar
-                </Link>
-              )}
+              <Button size="lg" onClick={confirmar} disabled={busy}>
+                {busy ? "Registrando pedido…" : `Confirmar pedido · ${formatPrice(total + address.freight / 100)}`}
+              </Button>
             </div>
           </div>
           <OrderSummary />

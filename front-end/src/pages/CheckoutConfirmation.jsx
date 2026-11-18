@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useStore } from "../hooks/useStore";
 import { formatPrice, formatZip } from "../data/products";
 import { CheckoutSteps } from "../components/CheckoutParts";
@@ -10,18 +10,6 @@ import { readSession, request } from "../services/api";
 export default function CheckoutConfirmation() {
   const { id } = useParams();
   const { user, logout } = useStore();
-  const location = useLocation();
-  if (!user) {
-    return (
-      <section className="container-shell grid justify-items-start gap-4 py-16">
-        <h1 className="font-display text-3xl font-bold">Acompanhar pedido</h1>
-        <p>Entre na sua conta para ver a situação do pedido.</p>
-        <Link className={pillLink("primary", "lg")} to="/entrar" state={{ returnTo: location.pathname + location.search }}>
-          Entrar
-        </Link>
-      </section>
-    );
-  }
   const pedidoId = id ?? readSession(`pedido_${user.id}`);
   if (!pedidoId) {
     return <p className="container-shell py-16">Nenhum pedido para acompanhar nesta sessão.</p>;
@@ -132,13 +120,13 @@ function Pedido({ id, token, expirar }) {
           {pedido.situacao === "Pendente" && (checkout ? (
             <a className={pillLink("primary", "md")} href={checkout.link}
               target={checkout.retorno_configurado ? undefined : "_blank"} rel="noopener noreferrer">
-              Abrir Checkout Pro
+              Abrir Mercado Pago
             </a>
-          ) : <Button onClick={pagar} disabled={busy}>Preparar pagamento de teste</Button>)}
+          ) : <Button onClick={pagar} disabled={busy}>Pagar com Mercado Pago</Button>)}
           <Button variant="outline" onClick={atualizar} disabled={busy}>{busy ? "Aguarde…" : "Atualizar situação"}</Button>
           <Link className={pillLink("outline", "md")} to="/catalogo">Voltar à loja</Link>
         </div>
-        {checkout && !checkout.retorno_configurado && <p className="text-sm">Ao concluir o teste na outra aba, volte e selecione Atualizar situação.</p>}
+        {checkout && !checkout.retorno_configurado && <p className="text-sm">Ao concluir o pagamento na outra aba, volte e selecione Atualizar situação.</p>}
       </div>
     </section>
   );

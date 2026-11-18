@@ -14,6 +14,11 @@ export const formatPrice = (v) =>
     v,
   );
 
+export function discountPercent({ price, oldPrice }) {
+  if (!(oldPrice > price && price >= 0)) return 0;
+  return (oldPrice - price) * 100 / oldPrice + 1e-9;
+}
+
 export const formatZip = (v) =>
   v.replace(/\D/g, "").slice(0, 8).replace(/^(\d{5})(\d)/, "$1-$2");
 

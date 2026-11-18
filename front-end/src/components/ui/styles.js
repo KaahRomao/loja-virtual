@@ -17,6 +17,7 @@ const pillSize = {
 const pillTone = {
   primary: "border-transparent bg-primary text-primary-foreground hover:bg-deep",
   light: "border-transparent bg-background text-primary",
+  amber: "border-transparent bg-amber text-deep hover:bg-amber/80",
   outline: "border-border bg-card text-foreground hover:bg-accent",
 };
 export const pillLink = (tone = "primary", size = "md") => cx(pill, pillSize[size], pillTone[tone]);
@@ -30,11 +31,11 @@ export const formLabel = "grid gap-1.5 text-[14px] font-bold";
 export const formInput =
   "w-full rounded-[12px] border border-border bg-background px-3.5 py-[11px] aria-invalid:border-destructive";
 export const formError = "mt-1.5 text-[13px] font-bold text-destructive";
-export const formCard = "grid gap-3.5 rounded-[18px] border border-border bg-card p-5";
+export const formCard = "grid gap-3.5 rounded-card border border-border bg-card p-5 shadow-card";
 export const noteBox = "border border-border bg-surface p-3 text-[12px] leading-[1.5]";
 
 // Cartões brancos do checkout
-export const panel = "rounded-[18px] border border-border bg-card p-5";
+export const panel = "rounded-card border border-border bg-card p-5 shadow-card";
 
 // ---- Painel administrativo ----
 export const adminCard = "overflow-hidden rounded-[7px] border border-border bg-card";

@@ -1,144 +1,114 @@
 import { useState } from "react";
-import { Menu, Search, MapPin, UserRound, ShoppingBasket, Tag, Truck } from "lucide-react";
+import { ArrowRight, MapPin, Menu, Search, ShoppingBasket, Tag, UserRound } from "lucide-react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useStore } from "../hooks/useStore";
-import { formatZip } from "../data/products";
+import { discountPercent, formatPrice, formatZip } from "../data/products";
 import { logoImage } from "../assets";
 import Button from "./ui/Button";
 import { cx } from "./ui/styles";
 
-// Classes de cada link do menu (muda a cor quando a página está ativa)
-const navClass = ({ active, offers }) =>
-  cx(
-    "inline-flex h-full items-center gap-1.5 border-b-[3px] text-[13px] leading-[normal] hover:text-primary mobile:h-auto mobile:border-b-0 mobile:p-2.5",
-    offers ? "font-black" : "font-extrabold",
-    active ? "border-primary text-primary" : cx("border-transparent", offers ? "text-deep" : "text-foreground"),
-  );
-
-// Campo de busca. Fica em um componente próprio para reiniciar quando a URL da busca muda.
 function SearchForm({ initial, onSearch }) {
   const navigate = useNavigate();
-  const [q, setQ] = useState(initial);
+  const [query, setQuery] = useState(initial);
 
-  const submit = (e) => {
-    e.preventDefault();
-    const term = q.trim();
-    navigate(term ? `/catalogo?q=${encodeURIComponent(term)}` : "/catalogo");
+  function submit(event) {
+    event.preventDefault();
+    const term = query.trim();
+    navigate(term ? "/catalogo?q=" + encodeURIComponent(term) : "/catalogo");
     onSearch();
-  };
+  }
 
   return (
     <form
-      className="flex h-12 flex-1 items-center gap-[11px] rounded-md border border-border bg-surface pl-[17px] text-soft-ink focus-within:outline-2 focus-within:outline-ring mobile:mt-3 mobile:h-11 mobile:order-5 mobile:flex-[0_0_100%]"
+      className="flex h-11 min-w-0 flex-1 items-center gap-2 overflow-hidden rounded-control border bg-surface pl-3 text-soft-ink focus-within:border-primary focus-within:ring-1 focus-within:ring-primary mobile:order-last mobile:basis-full"
       role="search"
       onSubmit={submit}
     >
-      <Search size={20} />
+      <Search size={18} className="shrink-0" aria-hidden="true" />
       <input
-        className="min-w-0 flex-1 border-0 bg-transparent text-[14px] text-foreground outline-0 placeholder:text-soft-ink"
+        className="w-full min-w-0 flex-1 border-0 bg-transparent py-2 text-sm text-foreground outline-none focus-visible:outline-none"
         placeholder="O que você está procurando?"
         aria-label="Buscar produtos"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
       />
-      <Button type="submit" variant="primary" size="search" aria-label="Buscar">
-        <Search size={16} />
+      <Button type="submit" size="search" aria-label="Buscar">
+        <Search size={18} />
       </Button>
     </form>
   );
 }
 
 export default function Header() {
-  const { totalItems, setCartOpen, address, user, categoryNames } = useStore();
+  const { totalItems, total, setCartOpen, address, user, categoryNames, products } = useStore();
   const { pathname, search } = useLocation();
   const [params] = useSearchParams();
   const [navOpen, setNavOpen] = useState(false);
-
   const offers = params.get("ofertas") === "true";
+  const hasOffers = products.some((product) => discountPercent(product) > 0 && product.stock > 0);
   const closeNav = () => setNavOpen(false);
 
+  const links = [
+    { to: "/catalogo", label: "Todos os produtos", active: pathname === "/catalogo" && !offers },
+    ...Object.entries(categoryNames).map(([slug, label]) => ({
+      to: "/categoria/" + slug, label, active: pathname === "/categoria/" + slug,
+    })),
+    { to: "/catalogo?ofertas=true", label: "Ofertas", active: pathname === "/catalogo" && offers, promo: true },
+  ];
+
   return (
-    <>
-      <div className="flex min-h-[35px] items-center justify-between gap-5 bg-deep px-[max(32px,calc(50vw_-_640px))] py-1.5 text-[12px] text-primary-foreground mobile:justify-center mobile:px-3.5 mobile:text-center">
-        <span>
-          Economia de verdade para a sua família. <b className="font-extrabold">Qualidade que cabe no bolso!</b>
-        </span>
-        <span className="flex items-center gap-[7px] whitespace-nowrap mobile:hidden">
-          <Truck size={15} /> Suas compras, do seu jeito
-        </span>
+    <header className="border-b bg-card">
+      <div className="bg-deep text-xs font-extrabold text-white">
+        <div className="container-shell flex min-h-9 flex-wrap items-center justify-between gap-x-4 gap-y-1 py-1.5 mobile:justify-center">
+          <span className="compact:hidden">Economia de verdade para a sua família</span>
+          <Link className="inline-flex items-center gap-1.5 text-amber hover:underline" to={hasOffers ? "/catalogo?ofertas=true" : "/catalogo"} onClick={closeNav}>
+            <Tag size={15} aria-hidden="true" /> {hasOffers ? "Ofertas da semana" : "Economia em cada compra"} <ArrowRight size={14} aria-hidden="true" />
+          </Link>
+        </div>
       </div>
 
-      <header className="border-b border-border bg-card">
-        <div className="container-shell flex h-[91px] items-center gap-[34px] compact:gap-[17px] mobile:h-auto mobile:min-h-[76px] mobile:flex-wrap mobile:gap-0 mobile:py-3">
-          <Button variant="ghost" size="icon" className="not-mobile:hidden mr-2.5" aria-label="Abrir menu" onClick={() => setNavOpen((o) => !o)}>
-            <Menu size={16} />
-          </Button>
-
-          <Link className="shrink-0" aria-label="VORA, página inicial" to="/" onClick={closeNav}>
-            <img className="h-auto w-[166px] mobile:w-[115px]" src={logoImage} width="166" height="52" alt="VORA" />
+      <div className="container-shell flex min-h-[76px] flex-wrap items-center gap-x-5 gap-y-2 py-3 compact:gap-x-3 mobile:gap-x-1.5">
+        <Button variant="ghost" size="iconSm" className="not-mobile:hidden" aria-label={navOpen ? "Fechar menu" : "Abrir menu"} aria-expanded={navOpen} aria-controls="store-nav" onClick={() => setNavOpen((open) => !open)}>
+          <Menu size={21} />
+        </Button>
+        <Link className="shrink-0" aria-label="VORA, página inicial" to="/" onClick={closeNav}>
+          <img className="brand-logo" src={logoImage} width="148" height="48" alt="VORA" />
+        </Link>
+        <SearchForm key={pathname === "/catalogo" ? search : "fora-do-catalogo"} initial={params.get("q") || ""} onSearch={closeNav} />
+        <div className="ml-auto flex shrink-0 items-center gap-3 mobile:gap-0.5">
+          <Link className="inline-flex min-h-10 items-center gap-2 rounded-control px-1 text-deep hover:text-primary tablet:hidden" to="/carrinho" onClick={closeNav}>
+            <MapPin size={21} aria-hidden="true" />
+            <div><small className="block text-[10px] text-muted-foreground">Entrega para</small><b className="block text-xs">{address.zip ? formatZip(address.zip) : "Informar CEP"}</b></div>
           </Link>
-
-          <SearchForm
-            key={pathname === "/catalogo" ? search : "fora-do-catalogo"}
-            initial={params.get("q") || ""}
-            onSearch={closeNav}
-          />
-
-          <div className="flex items-center gap-5 compact:gap-[13px] mobile:ml-auto mobile:gap-[9px]">
-            <Link className="flex items-center gap-[9px] text-left mobile:hidden" to="/carrinho">
-              <MapPin size={21} />
-              <span className="compact:hidden">
-                <small className="block text-[11px] leading-[1.25] text-muted-foreground">Entrega para</small>
-                <b className="block text-[12px] font-extrabold leading-[1.25] whitespace-nowrap">
-                  {address.zip ? formatZip(address.zip) : "Informar CEP"}
-                </b>
-              </span>
-            </Link>
-            <Link className="flex items-center gap-[9px] text-left" to="/entrar" aria-label={user ? "Minha conta" : "Entrar ou cadastrar"}>
-              <UserRound size={21} />
-              <span className="compact:hidden">
-                <small className="block text-[11px] leading-[1.25] text-muted-foreground">
-                  {user ? `Olá, ${user.name}!` : "Bem-vindo!"}
-                </small>
-                <b className="block text-[12px] font-extrabold leading-[1.25] whitespace-nowrap">
-                  {user ? "Minha conta" : "Entrar ou cadastrar"}
-                </b>
-              </span>
-            </Link>
-            <Button
-              variant="primary"
-              size="md"
-              weight="font-extrabold"
-              className="relative shrink-0 mobile:w-[42px] mobile:px-0"
-              aria-label={`Abrir carrinho com ${totalItems} itens`}
-              onClick={() => setCartOpen(true)}
-            >
-              <ShoppingBasket size={21} />
-              <span className="mobile:hidden">Carrinho</span>
-              {totalItems > 0 && (
-                <span className="absolute -top-2 left-4 grid h-[19px] min-w-[19px] place-items-center rounded-[50%] bg-amber px-1 text-[10px] text-foreground">
-                  {totalItems}
-                </span>
-              )}
-            </Button>
-          </div>
+          <Link className="inline-flex min-h-10 min-w-9 items-center justify-center gap-1.5 rounded-control px-1 text-deep hover:text-primary" to="/entrar" aria-label={user ? "Minha conta" : "Entrar ou cadastrar"} onClick={closeNav}>
+            <UserRound size={20} aria-hidden="true" />
+            <b className="text-sm mobile:hidden">{user ? "Minha conta" : "Entrar"}</b>
+          </Link>
+          <Button
+            size="lg"
+            className="gap-2 rounded-full mobile:px-2.5"
+            aria-label={"Abrir carrinho, " + totalItems + (totalItems === 1 ? " item" : " itens") + ", " + formatPrice(total)}
+            onClick={() => setCartOpen(true)}
+          >
+            <span key={totalItems} className={cx("relative inline-flex", totalItems > 0 && "motion-safe:animate-cart-bump")}>
+              <ShoppingBasket size={21} aria-hidden="true" />
+              {totalItems > 0 && <span className="absolute -top-2 -right-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-amber px-0.5 text-[9px] text-deep">{totalItems}</span>}
+            </span>
+            <span aria-live="polite" className="text-xs font-black">{formatPrice(total)}</span>
+          </Button>
         </div>
-      </header>
+      </div>
 
-      <nav className={cx("border-b border-border bg-card", !navOpen && "mobile:hidden")} aria-label="Navegação principal">
-        <div className="container-shell flex h-[49px] items-center gap-[25px] compact:gap-[15px] mobile:grid mobile:h-auto mobile:gap-0.5 mobile:py-2.5">
-          <Link className={navClass({ active: pathname === "/" })} to="/" onClick={closeNav}>Início</Link>
-          <Link className={navClass({ active: pathname === "/catalogo" })} to="/catalogo" onClick={closeNav}>Todos os produtos</Link>
-          {Object.entries(categoryNames).map(([slug, name]) => (
-            <Link key={slug} className={navClass({ active: pathname === `/categoria/${slug}` })} to={`/categoria/${slug}`} onClick={closeNav}>
-              {name}
+      <nav id="store-nav" className={cx("border-t", !navOpen && "mobile:hidden")} aria-label="Navegação principal">
+        <div className="container-shell flex min-h-11 flex-wrap items-center gap-x-5 text-sm compact:gap-x-3 mobile:grid mobile:grid-cols-2 mobile:gap-1 mobile:py-2">
+          {links.map(({ to, label, active, promo }) => (
+            <Link key={to} to={to} aria-current={active ? "page" : undefined} onClick={closeNav}
+              className={cx("inline-flex min-h-10 items-center gap-1.5 rounded-control px-2.5 font-extrabold hover:bg-accent hover:text-primary", active && "bg-accent text-primary", promo && "text-destructive")}>
+              {promo && <Tag size={15} aria-hidden="true" />} {label}
             </Link>
           ))}
-          <Link className={navClass({ active: offers, offers: true })} to="/catalogo?ofertas=true" onClick={closeNav}>
-            <Tag size={16} /> Ofertas
-          </Link>
         </div>
       </nav>
-    </>
+    </header>
   );
 }

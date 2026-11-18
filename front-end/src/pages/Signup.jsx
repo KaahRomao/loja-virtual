@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useStore } from "../hooks/useStore";
+import { checkoutDestination } from "../data/checkout";
 import { request } from "../services/api";
 import Button from "../components/ui/Button";
-import { crumbLink, eyebrow, formInput, formLabel } from "../components/ui/styles";
+import { crumbLink, formCard, formError, formInput, formLabel } from "../components/ui/styles";
 
 export default function Signup() {
   const { login } = useStore();
@@ -29,7 +30,7 @@ export default function Signup() {
       });
       try {
         await login("cliente", form.email, form.password);
-        navigate(state?.returnTo ?? "/", { replace: true });
+        navigate(checkoutDestination(state) ?? "/", { replace: true });
       } catch {
         navigate("/entrar", { state, replace: true });
       }
@@ -43,20 +44,19 @@ export default function Signup() {
   return (
     <section className="container-shell grid place-items-center pt-[50px] pb-[90px]">
       <form
-        className="grid w-[min(440px,100%)] gap-3.5 rounded-[22px] border border-border bg-card p-[30px] shadow-card"
+        className={formCard + " w-[min(440px,100%)]"}
         noValidate
         onSubmit={submit}
       >
-        <span className={eyebrow}>É RAPIDINHO</span>
         <h1 className="font-display text-[28px] font-bold leading-[normal] text-deep">Criar sua conta</h1>
-        <label className={formLabel}>Nome completo<input className={formInput} type="text" value={form.name} onChange={set("name")} /></label>
-        <label className={formLabel}>E-mail<input className={formInput} type="email" value={form.email} onChange={set("email")} /></label>
+        <label className={formLabel}>Nome completo<input className={formInput} type="text" autoComplete="name" value={form.name} onChange={set("name")} /></label>
+        <label className={formLabel}>E-mail<input className={formInput} type="email" autoComplete="email" value={form.email} onChange={set("email")} /></label>
         <label className={formLabel}>Celular (opcional)<input className={formInput} type="tel" autoComplete="tel" value={form.phone} onChange={set("phone")} /></label>
         <div className="grid grid-cols-[1fr_1fr] gap-3 mobile:grid-cols-[1fr]">
-          <label className={formLabel}>Senha<input className={formInput} type="password" value={form.password} onChange={set("password")} /></label>
-          <label className={formLabel}>Repetir senha<input className={formInput} type="password" value={form.confirm} onChange={set("confirm")} /></label>
+          <label className={formLabel}>Senha<input className={formInput} type="password" autoComplete="new-password" value={form.password} onChange={set("password")} /></label>
+          <label className={formLabel}>Repetir senha<input className={formInput} type="password" autoComplete="new-password" value={form.confirm} onChange={set("confirm")} /></label>
         </div>
-        {error && <p className="mt-1.5 text-[13px] font-bold text-destructive">{error}</p>}
+        {error && <p role="alert" className={formError}>{error}</p>}
         <Button type="submit" size="lg" disabled={busy}>{busy ? "Cadastrando…" : "Criar conta"}</Button>
         <p className="text-center text-[14px]">
           Já tem conta? <Link className={crumbLink} to="/entrar" state={state}>Entrar</Link>

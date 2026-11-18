@@ -1,132 +1,69 @@
-import { useState } from "react";
-import { ShoppingBasket, Heart, Truck } from "lucide-react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { formatPrice } from "../data/products";
+import { ChevronRight, Heart, ShoppingBasket, Truck } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
+import { discountPercent, formatPrice, stockStatus } from "../data/products";
 import { useStore } from "../hooks/useStore";
+import ProductGallery from "../components/ProductGallery";
 import ProductGrid from "../components/ProductGrid";
-import ProductPhoto from "../components/ProductPhoto";
-import QuantityStepper from "../components/QuantityStepper";
+import ProductQuantity from "../components/ProductQuantity";
 import SectionHeading from "../components/SectionHeading";
 import Button from "../components/ui/Button";
 import NotFound from "./NotFound";
-import { eyebrow } from "../components/ui/styles";
+import { eyebrow, panel, pillLink } from "../components/ui/styles";
 
-// A página fica em um componente interno com key={id}: ao trocar de produto, a quantidade volta para 1.
 function Detail({ product }) {
-  const {
-    products,
-    cart,
-    setQuantity,
-    setCartOpen,
-    favorites,
-    toggleFavorite,
-    categoryNames,
-  } = useStore();
-  const navigate = useNavigate();
-  const [qty, setQty] = useState(1);
-
-  const disponivel = Math.max(0, product.stock - (cart[product.id] || 0));
-  const fav = favorites.includes(product.id);
-  const related = products
-    .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 4);
+  const { products, cart, favorites, toggleFavorite } = useStore();
+  const inCart = cart[product.id] > 0;
+  const favorite = favorites.includes(product.id);
+  const discount = discountPercent(product);
+  const related = products.filter((other) => other.category === product.category && other.name !== product.name).slice(0, 4);
 
   return (
-    <section className="container-shell pb-20">
-      <div className="flex items-center gap-[9px] pt-6 text-[12px] text-muted-foreground">
-        <Link className="hover:underline" to="/">
-          Início
-        </Link>
-        <span>/</span>
-        <Link className="hover:underline" to={`/categoria/${product.category}`}>
-          {categoryNames[product.category]}
-        </Link>
-        <span>/</span>
-        <span>{product.name}</span>
-      </div>
+    <section className="container-shell pb-16 mobile:pb-10">
+      <nav aria-label="Caminho do produto" className="flex flex-wrap items-center gap-1.5 pt-5 text-xs font-bold text-muted-foreground">
+        <Link className="hover:underline" to="/">Início</Link>
+        <ChevronRight size={13} aria-hidden="true" />
+        <Link className="hover:underline" to={"/categoria/" + product.category}>{product.categoryName}</Link>
+      </nav>
 
-      <div className="mt-[18px] mb-[60px] grid grid-cols-[1fr_1fr] gap-12 tablet:grid-cols-[1fr]">
-        <div className="relative aspect-square overflow-hidden rounded-[24px] bg-card shadow-card">
-          <ProductPhoto product={product} />
-          {product.oldPrice && (
-            <span className="absolute top-3 left-3 rounded-[3px] bg-amber px-2 py-[5px] text-[10px] font-black text-foreground">
-              OFERTA
-            </span>
-          )}
-        </div>
-        <div className="flex flex-col justify-center gap-2.5">
-          <span className={eyebrow}>{categoryNames[product.category]}</span>
-          <h1 className="font-display text-[40px] font-bold leading-[1.1] text-deep mobile:text-[30px]">
-            {product.name}
-          </h1>
-          <span className="text-[13px] text-muted-foreground">
-            {product.unit}
-          </span>
-          <p>{product.description}</p>
-          {product.oldPrice && (
-            <span className="block text-[12px] leading-[1.3] text-muted-foreground line-through">
-              De {formatPrice(product.oldPrice)}
-            </span>
-          )}
-          <strong className="mt-[3px] mb-[25px] block font-display text-[34px] font-semibold leading-[normal] text-deep">
-            {formatPrice(product.price)}
-          </strong>
-          {product.oldPrice && (
-            <span className="self-start rounded-[20px] bg-accent px-3 py-1 text-[13px] font-extrabold text-deep">
-              Você economiza {formatPrice(product.oldPrice - product.price)}
-            </span>
-          )}
-          <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
-            <QuantityStepper
-              big
-              value={qty}
-              max={disponivel}
-              onMinus={() => setQty((q) => Math.max(1, q - 1))}
-              onPlus={() => setQty((q) => Math.min(disponivel, q + 1))}
-            />
-            <Button
-              size="lg"
-              disabled={disponivel === 0}
-              onClick={() => {
-                setQuantity(product.id, qty);
-                navigate("/carrinho");
-              }}
-            >
-              <ShoppingBasket size={16} /> {disponivel === 0 ? "Indisponível" : "Comprar agora"}
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              disabled={disponivel === 0}
-              onClick={() => {
-                setQuantity(product.id, qty);
-                setCartOpen(true);
-              }}
-            >
-              Adicionar ao carrinho
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="Favoritar"
-              aria-pressed={fav}
-              onClick={() => toggleFavorite(product.id)}
-            >
-              <Heart size={16} fill={fav ? "currentColor" : "none"} />
+      <div className="mt-5 mb-14 grid grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] items-start gap-8 tablet:gap-4 mobile:grid-cols-1">
+        <ProductGallery product={product} />
+        <div className={panel}>
+          <span className={eyebrow}>{product.categoryName.toUpperCase()}</span>
+          <h1 className="mt-2 font-display text-[clamp(30px,4vw,42px)] font-semibold leading-[1.08] text-deep">{product.name}</h1>
+          {product.unit && <p className="mt-1 text-sm text-muted-foreground">{product.unit}</p>}
+          {product.description && <p className="mt-4 text-sm leading-relaxed text-foreground">{product.description}</p>}
+          <div className="my-5 border-y py-4">
+            {discount > 0 && (
+              <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                <del className="text-sm text-muted-foreground">{formatPrice(product.oldPrice)}</del>
+                <span className="rounded-full bg-destructive px-2.5 py-1 text-xs font-black text-white">
+                  {discount < 1 ? "<1% de desconto" : "−" + Math.floor(discount) + "%"}
+                </span>
+              </div>
+            )}
+            <strong className="font-display text-[37px] leading-none font-semibold text-deep">{formatPrice(product.price)}</strong>
+            {stockStatus(product.stock) === "baixo" && <p className="mt-2 text-sm font-extrabold text-destructive">Últimas unidades</p>}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <ProductQuantity product={product} large />
+            <Button variant="outline" size="icon" aria-label={"Favoritar " + product.name} aria-pressed={favorite} onClick={() => toggleFavorite(product.id)}>
+              <Heart size={18} fill={favorite ? "currentColor" : "none"} />
             </Button>
           </div>
-          <p className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
-            <Truck size={16} /> Entrega calculada pelo CEP no carrinho.
+          {inCart && <Link className={pillLink("outline", "md") + " mt-3"} to="/carrinho"><ShoppingBasket size={16} /> Ver carrinho</Link>}
+          <p className="mt-5 flex items-center gap-2 text-sm text-muted-foreground">
+            <Truck size={18} className="shrink-0 text-primary" aria-hidden="true" /> Entrega calculada pelo CEP no carrinho.
           </p>
         </div>
       </div>
 
-      <SectionHeading
-        className="mb-5"
-        label="COMBINA COM SUA LISTA"
-        title="Produtos parecidos"
-      />
-      <ProductGrid items={related} />
+      {related.length > 0 && (
+        <>
+          <SectionHeading title="Produtos parecidos" />
+          <ProductGrid items={related} />
+        </>
+      )}
     </section>
   );
 }
@@ -134,7 +71,6 @@ function Detail({ product }) {
 export default function ProductDetail() {
   const { products } = useStore();
   const { id } = useParams();
-  const product = products.find((p) => p.id === Number(id));
-  if (!product) return <NotFound />;
-  return <Detail key={product.id} product={product} />;
+  const product = products.find((item) => item.id === Number(id));
+  return product ? <Detail key={product.id} product={product} /> : <NotFound />;
 }

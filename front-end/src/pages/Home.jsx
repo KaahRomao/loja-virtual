@@ -1,19 +1,12 @@
+import { useRef } from "react";
 import {
-  Sparkles,
-  ArrowRight,
-  Tag,
-  ShieldCheck,
-  ShoppingBasket,
-  Carrot,
-  Apple,
-  Wheat,
-  CupSoda,
-  Milk,
+  Apple, ArrowLeft, ArrowRight, Carrot, CupSoda, Milk, ShoppingBasket,
+  Sparkles, Tag, Truck, Wheat,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import ProductGrid from "../components/ProductGrid";
+import ProductCard from "../components/ProductCard";
 import SectionHeading from "../components/SectionHeading";
-import { categoryTaglines } from "../data/products";
+import { categoryTaglines, discountPercent } from "../data/products";
 import { useStore } from "../hooks/useStore";
 import { heroImage } from "../assets";
 import { cx, pillLink, textArrow } from "../components/ui/styles";
@@ -28,140 +21,112 @@ const categoryIcons = {
 };
 const tileColors = ["bg-pale", "bg-cream", "bg-secondary"];
 
-const benefits = [
-  { icon: Tag, title: "Preço que ajuda", text: "Economia em cada compra" },
-  {
-    icon: ShieldCheck,
-    title: "Qualidade de verdade",
-    text: "Escolhas para sua família",
-  },
-  {
-    icon: ShoppingBasket,
-    title: "Tudo em um lugar",
-    text: "Do básico ao especial",
-  },
-];
+function uniqueProducts(products) {
+  const names = new Set();
+  return products.filter((product) => {
+    const name = product.name.trim().toLowerCase();
+    if (names.has(name)) return false;
+    names.add(name);
+    return true;
+  });
+}
+
+function ProductShelf({ items, offers = false }) {
+  const rail = useRef(null);
+  const title = offers ? "Ofertas da semana" : "Em destaque";
+
+  function scroll(direction) {
+    const track = rail.current;
+    track.scrollBy({ left: track.clientWidth * direction * 0.85 });
+  }
+
+  return (
+    <section id={offers ? "ofertas" : "destaques"} className="container-shell py-14 mobile:py-9">
+      <SectionHeading
+        title={title}
+        text={offers ? "Economize no que não pode faltar em casa." : "Encontre o básico de sempre para a sua lista."}
+      >
+        <div className="flex items-center gap-2">
+          <Link className={cx(textArrow, "mr-2 text-sm")} to={offers ? "/catalogo?ofertas=true" : "/catalogo"}>
+            {offers ? "Todas as ofertas" : "Ver catálogo"} <ArrowRight size={17} />
+          </Link>
+          {items.length > 4 && (
+            <>
+              <button type="button" aria-label={title + " anteriores"} className="grid size-10 place-items-center rounded-full border bg-card text-primary hover:bg-accent mobile:hidden" onClick={() => scroll(-1)}><ArrowLeft size={18} /></button>
+              <button type="button" aria-label={title + " seguintes"} className="grid size-10 place-items-center rounded-full border bg-card text-primary hover:bg-accent mobile:hidden" onClick={() => scroll(1)}><ArrowRight size={18} /></button>
+            </>
+          )}
+        </div>
+      </SectionHeading>
+      <div className="product-rail" ref={rail} tabIndex={0} role="region" aria-label={title}>
+        {items.map((product) => <ProductCard key={product.id} product={product} featured={!offers} />)}
+      </div>
+    </section>
+  );
+}
 
 export default function Home() {
   const { categoryNames, products } = useStore();
-  const offers = products.filter((p) => p.oldPrice).slice(0, 4);
-  const favorites = products.slice(4, 8);
+  const offers = uniqueProducts(products.filter((product) => discountPercent(product) && product.stock > 0)).slice(0, 10);
+  const highlights = uniqueProducts(products.filter((product) => product.stock > 0)).slice(0, 8);
 
   return (
     <>
-      {/* Banner principal */}
-      <section
-        className="relative flex h-[clamp(390px,34vw,490px)] items-center bg-cover bg-center mobile:h-[470px] mobile:bg-[position:62%_center] mobile:before:absolute mobile:before:inset-0 mobile:before:bg-[linear-gradient(90deg,var(--color-pale)_0%,oklch(94.9%_.065_174/.88)_45%,transparent_100%)] mobile:before:content-['']"
-        style={{ backgroundImage: `url(${heroImage})` }}
-      >
-        <div className="container-shell mobile:relative">
-          <div className="max-w-[580px] mobile:max-w-[380px]">
-            <span className="inline-flex items-center gap-[7px] rounded-[40px] bg-card px-[13px] py-[9px] text-[11px] font-black tracking-[.07em] text-primary">
-              <Sparkles size={15} /> O MERCADO DA SUA FAMÍLIA
+      <section className="bg-cream py-5 mobile:py-3" aria-labelledby="home-title">
+        <div className="container-shell relative isolate grid min-h-[455px] items-center overflow-hidden rounded-[28px] bg-pale tablet:min-h-[420px] mobile:min-h-0 mobile:rounded-[22px]">
+          <img
+            className="absolute inset-y-0 right-0 -z-20 h-full w-[68%] object-cover object-right tablet:w-[75%] mobile:relative mobile:inset-auto mobile:order-2 mobile:h-[170px] mobile:w-full mobile:object-[center_62%]"
+            src={heroImage}
+            alt=""
+            fetchPriority="high"
+          />
+          <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,var(--color-pale)_0%,var(--color-pale)_36%,transparent_78%)] mobile:hidden" />
+          <div className="max-w-[660px] px-[clamp(24px,5vw,68px)] py-12 mobile:py-7">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-2 text-[10px] font-black tracking-[.08em] text-deep uppercase">
+              <Sparkles size={14} aria-hidden="true" /> O mercado da sua família
             </span>
-            <h1 className="mt-[21px] mb-[17px] font-display text-[clamp(39px,4.3vw,64px)] font-semibold leading-[1.06] text-deep mobile:text-[clamp(36px,8vw,49px)]">
-              Tudo que você precisa.
-              <br />
-              <em className="text-primary not-italic">
-                Do jeitinho que cabe no bolso.
-              </em>
+            <h1 id="home-title" className="mt-5 font-display text-[clamp(43px,4.05vw,64px)] font-semibold leading-[1.04] text-deep mobile:mt-4 mobile:text-[clamp(32px,8.7vw,48px)]">
+              Tudo que você precisa. <span className="block text-primary">Do jeitinho que cabe no bolso.</span>
             </h1>
-            <p className="mb-[25px] max-w-[430px] text-[17px] leading-[1.5] text-foreground mobile:max-w-[320px] mobile:text-[15px]">
-              Produtos para o seu dia a dia, com qualidade de verdade e preço
-              que faz bem.
+            <p className="mt-5 max-w-[370px] text-base leading-relaxed text-deep mobile:mt-3 mobile:text-sm">
+              Produtos para o seu dia a dia, com qualidade de verdade e preço que faz bem.
             </p>
-            <Link
-              className={cx(pillLink("primary", "lg"), "mt-[26px]")}
-              to="/catalogo"
-            >
-              Comprar agora <ArrowRight />
-            </Link>
+            <div className="mt-7 flex flex-wrap gap-2.5 mobile:mt-5">
+              <Link className={pillLink("primary", "lg")} to="/catalogo">Comprar agora <ArrowRight size={18} /></Link>
+              {(offers.length > 0 || highlights.length > 0) && (
+                <a className={pillLink("amber")} href={offers.length ? "#ofertas" : "#destaques"}>{offers.length ? "Ver ofertas" : "Ver destaques"}</a>
+              )}
+            </div>
           </div>
+        </div>
+        <div className="container-shell mt-4 flex flex-wrap items-center justify-center gap-x-9 gap-y-2 px-3 pb-1 text-sm font-extrabold text-deep mobile:justify-start mobile:gap-x-4 mobile:text-xs">
+          <span className="inline-flex items-center gap-2"><Truck size={18} aria-hidden="true" /> Frete calculado pelo CEP</span>
+          <Link to="/catalogo?ofertas=true" className="inline-flex items-center gap-2 hover:underline"><Tag size={17} aria-hidden="true" /> Confira as ofertas</Link>
         </div>
       </section>
 
-      {/* Vantagens */}
-      <section
-        className="container-shell grid min-h-[106px] grid-cols-[repeat(3,1fr)] items-center border-b border-border mobile:min-h-0 mobile:grid-cols-[1fr_1fr] mobile:gap-3 mobile:py-[17px]"
-        aria-label="Vantagens VORA"
-      >
-        {benefits.map(({ icon: Icon, title, text }, i) => (
-          <div
-            key={title}
-            className={cx(
-              "flex items-center justify-center gap-3.5 mobile:justify-start mobile:gap-[9px]",
-              i > 0 && "border-l border-border mobile:border-l-0",
-              i === benefits.length - 1 && "mobile:hidden",
-            )}
-          >
-            <span className="grid size-[42px] place-items-center rounded-[50%] bg-pale text-primary mobile:size-[35px] mobile:flex-none">
-              <Icon className="w-5 mobile:w-4" />
-            </span>
-            <span>
-              <b className="block font-display text-[16px] font-medium mobile:text-[13px]">
-                {title}
-              </b>
-              <small className="mt-0.5 block text-[12px] text-muted-foreground mobile:text-[10px] tiny:hidden">
-                {text}
-              </small>
-            </span>
-          </div>
-        ))}
-      </section>
+      {offers.length > 0 ? <ProductShelf items={offers} offers /> : highlights.length > 0 && <ProductShelf items={highlights} />}
 
-      {/* Ofertas */}
-      <section
-        className="container-shell pt-[70px] pb-[78px] mobile:pt-11 mobile:pb-[50px]"
-        id="ofertas"
-      >
-        <SectionHeading
-          label="SELEÇÃO VORA"
-          title={
-            <>
-              Ofertas pra aproveitar <span className="text-amber">✦</span>
-            </>
-          }
-          text="Economize no que não pode faltar em casa."
-        >
-          <Link className={textArrow} to="/catalogo?ofertas=true">
-            Ver ofertas da semana <ArrowRight className="w-[18px]" />
-          </Link>
-        </SectionHeading>
-        {offers.length ? <ProductGrid items={offers} /> : <p className="text-muted-foreground">Nenhuma oferta ativa no momento.</p>}
-      </section>
-
-      {/* Categorias */}
-      <section className="bg-surface pt-[65px] pb-[72px] mobile:py-11">
+      <section className="bg-secondary/50 py-14 mobile:py-9">
         <div className="container-shell">
-          <SectionHeading
-            label="ENCONTRE RAPIDINHO"
-            title="O que vai pra sua lista hoje?"
-            text="Escolha uma categoria e encontre tudo mais fácil."
-          />
-          <div className="grid grid-cols-[repeat(3,1fr)] gap-[18px] mobile:grid-cols-[1fr] mobile:gap-2.5">
-            {Object.keys(categoryNames).map((slug, i) => {
+          <SectionHeading title="Compre por categoria" text="Encontre tudo para sua próxima compra." />
+          <div className="grid grid-cols-3 gap-3 mobile:grid-cols-2">
+            {Object.entries(categoryNames).map(([slug, name], index) => {
               const Icon = categoryIcons[slug] ?? ShoppingBasket;
               return (
                 <Link
                   key={slug}
-                  className={cx(
-                    "min-h-[143px] min-w-0 px-6 py-5 text-left mobile:min-h-[104px] tiny:p-3.5",
-                    tileColors[i % tileColors.length],
-                  )}
-                  to={`/categoria/${slug}`}
+                  className={cx("group grid min-w-0 content-between gap-3 rounded-card border border-primary/12 p-5 text-deep transition-colors hover:bg-card mobile:p-3.5", tileColors[index % tileColors.length])}
+                  to={"/categoria/" + slug}
                 >
-                  <span className="grid place-items-center text-[45px]">
-                    <Icon />
+                  <span className="grid size-11 place-items-center rounded-full bg-card/80 text-primary mobile:size-9">
+                    <Icon size={22} aria-hidden="true" />
                   </span>
-                  <span>
-                    <b className="block font-display text-[23px] font-[550] leading-[normal] text-deep">
-                      {categoryNames[slug]}
-                    </b>
-                    <small className="mt-[5px] block text-[12px] whitespace-normal text-soft-ink">
-                      {categoryTaglines[slug]}
-                    </small>
-                  </span>
-                  <ArrowRight className="ml-auto w-[18px] text-primary" />
+                  <div>
+                    <b className="block font-display text-[22px] leading-tight font-medium mobile:text-[17px]">{name}</b>
+                    {categoryTaglines[slug] && <p className="mt-1 text-sm text-soft-ink mobile:text-xs">{categoryTaglines[slug]}</p>}
+                  </div>
+                  <ArrowRight size={18} className="justify-self-end text-primary motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5" aria-hidden="true" />
                 </Link>
               );
             })}
@@ -169,37 +134,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Favoritos */}
-      <section className="container-shell pt-[70px] pb-[78px] mobile:pt-11 mobile:pb-[50px]">
-        <SectionHeading
-          label="PRA FACILITAR SEU DIA"
-          title="Favoritos da família"
-          text="O básico de sempre, pertinho de você."
-        >
-          <Link className={textArrow} to="/catalogo">
-            Ver catálogo completo <ArrowRight className="w-[18px]" />
-          </Link>
-        </SectionHeading>
-        <ProductGrid items={favorites} />
-      </section>
+      {offers.length > 0 && highlights.length > 0 && <ProductShelf items={highlights} />}
 
-      {/* Faixa final */}
-      <section className="bg-deep text-primary-foreground">
-        <div className="container-shell flex items-center justify-between gap-[25px] py-[52px] mobile:flex-col mobile:items-start mobile:py-10">
-          <div>
-            <span className="text-[11px] font-black tracking-[.13em] text-amber">
-              VORA SUPERMARKET
-            </span>
-            <h2 className="mt-1.5 font-display text-[34px] font-[550] leading-[normal] mobile:text-[29px]">
-              Sua lista fica mais leve por aqui.
-            </h2>
-            <p className="mt-[5px] text-[14px] opacity-90">
-              Mais praticidade para comprar tudo que sua casa precisa.
-            </p>
-          </div>
-          <Link className={pillLink("light", "md")} to="/catalogo">
-            Explorar produtos <ArrowRight />
-          </Link>
+      <section className="container-shell py-10">
+        <div className="flex flex-wrap items-center justify-between gap-5 rounded-[22px] bg-deep px-8 py-7 text-primary-foreground mobile:px-5">
+          <h2 className="font-display text-[29px] font-medium">Sua lista fica mais leve por aqui.</h2>
+          <Link className={pillLink("light")} to="/catalogo">Explorar produtos <ArrowRight size={18} /></Link>
         </div>
       </section>
     </>

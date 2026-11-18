@@ -17,6 +17,23 @@ export function writeSession(key, value) {
   }
 }
 
+export function readPreference(key) {
+  try {
+    return JSON.parse(localStorage.getItem(`vora_${key}`)) ?? readSession(key);
+  } catch {
+    return readSession(key);
+  }
+}
+
+export function writePreference(key, value) {
+  try {
+    localStorage.setItem(`vora_${key}`, JSON.stringify(value));
+    writeSession(key, null);
+  } catch {
+    writeSession(key, value);
+  }
+}
+
 export class ApiError extends Error {
   constructor(message, status) {
     super(message);

@@ -1,55 +1,57 @@
-import { Heart, Plus } from "lucide-react";
+import { Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useStore } from "../hooks/useStore";
-import { formatPrice } from "../data/products";
+import { discountPercent, formatPrice, stockStatus } from "../data/products";
 import ProductPhoto from "./ProductPhoto";
+import ProductQuantity from "./ProductQuantity";
 import Button from "./ui/Button";
 
-export default function ProductCard({ product }) {
-  const { cart, setQuantity, favorites, toggleFavorite, categoryNames } = useStore();
-  const fav = favorites.includes(product.id);
-  const disponivel = product.stock > (cart[product.id] || 0);
-  const to = `/produto/${product.id}`;
+export default function ProductCard({ product, featured = false }) {
+  const { favorites, toggleFavorite } = useStore();
+  const favorite = favorites.includes(product.id);
+  const discount = discountPercent(product);
+  const to = "/produto/" + product.id;
 
   return (
-    <article className="min-w-0 overflow-hidden rounded-[7px] border border-border bg-card shadow-card transition-[translate,box-shadow] duration-200 hover:-translate-y-[3px] hover:shadow-card-hover motion-reduce:transition-none">
-      <Link className="relative block aspect-[1.22] cursor-pointer bg-surface tiny:aspect-square" aria-label={`Ver detalhes de ${product.name}`} to={to}>
-        <ProductPhoto product={product} />
-        {product.oldPrice && (
-          <span className="absolute top-3 left-3 rounded-[3px] bg-amber px-2 py-[5px] text-[10px] font-black text-foreground">OFERTA</span>
+    <article className="group flex min-w-0 flex-col overflow-hidden rounded-card border bg-card shadow-card motion-safe:transition-[translate,box-shadow] motion-safe:hover:-translate-y-0.5 hover:shadow-card-hover">
+      <div className="relative bg-cream">
+        <Link className="block aspect-[1.14] overflow-hidden mobile:aspect-square" aria-label={"Ver detalhes de " + product.name} to={to}>
+          <ProductPhoto product={product} className="motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover:scale-105" />
+        </Link>
+        {discount > 0 ? (
+          <span className="pointer-events-none absolute top-2.5 left-2.5 rounded-full bg-destructive px-2.5 py-1 text-xs font-black text-white">
+            {discount < 1 ? "<1% de desconto" : "−" + Math.floor(discount) + "%"}
+          </span>
+        ) : featured && (
+          <span className="pointer-events-none absolute top-2.5 left-2.5 rounded-full bg-amber px-2.5 py-1 text-[11px] font-black text-deep">Destaque</span>
         )}
-        <button
-          className="absolute top-[9px] right-[9px] inline-flex size-[34px] items-center justify-center rounded-full bg-card text-primary"
-          aria-label={`Favoritar ${product.name}`}
-          aria-pressed={fav}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleFavorite(product.id);
-          }}
+        <Button
+          variant="outline"
+          size="iconSm"
+          className="absolute top-2 right-2 rounded-full bg-card text-primary"
+          aria-label={"Favoritar " + product.name}
+          aria-pressed={favorite}
+          onClick={() => toggleFavorite(product.id)}
         >
-          <Heart size={17} fill={fav ? "currentColor" : "none"} />
-        </button>
-      </Link>
-      <div className="p-4 mobile:p-3 tiny:p-2.5">
-        <span className="block text-[10px] font-black tracking-[.08em] text-primary uppercase">{categoryNames[product.category]}</span>
-        <h3 className="mt-[5px] cursor-pointer overflow-hidden font-display text-[18px] font-medium text-ellipsis whitespace-nowrap text-deep mobile:text-[15px]">
-          <Link to={to}>{product.name}</Link>
+          <Heart size={17} fill={favorite ? "currentColor" : "none"} />
+        </Button>
+      </div>
+
+      <div className="flex flex-1 flex-col p-3.5 mobile:p-2.5">
+        <span className="text-[10px] font-black tracking-wide text-primary uppercase">{product.categoryName}</span>
+        <h3 className="mt-1 font-display text-[17px] font-medium leading-tight text-deep mobile:text-[15px]">
+          <Link className="hover:underline" to={to}>{product.name}</Link>
         </h3>
-        <p className="mt-[3px] text-[12px] text-muted-foreground">{product.unit}</p>
-        <div className="mt-3 flex min-h-[54px] items-end justify-between gap-[5px] mobile:min-h-12">
-          <div>
-            {product.oldPrice && (
-              <span className="block text-[12px] leading-[1.3] text-muted-foreground line-through">{formatPrice(product.oldPrice)}</span>
-            )}
-            <strong className="block font-display text-[24px] font-semibold leading-[1.1] text-deep mobile:text-[20px] tiny:text-[18px]">
-              {formatPrice(product.price)}
-            </strong>
-          </div>
-          {product.stock === 0 && <span className="text-xs text-muted-foreground">Esgotado</span>}
-          <Button variant="primary" size="icon" disabled={!disponivel} aria-label={`Adicionar ${product.name} ao carrinho`} onClick={() => setQuantity(product.id, 1)}>
-            <Plus size={16} />
-          </Button>
+        {product.unit && <p className="mt-1 text-xs text-muted-foreground">{product.unit}</p>}
+        <div className="mt-auto pt-3">
+          {discount > 0 && <del className="block text-xs text-muted-foreground">{formatPrice(product.oldPrice)}</del>}
+          <strong className="block font-display text-[26px] font-semibold leading-none text-deep mobile:text-[22px]">
+            {formatPrice(product.price)}
+          </strong>
+          {stockStatus(product.stock) === "baixo" && <p className="mt-1 text-xs font-extrabold text-destructive">Últimas unidades</p>}
+        </div>
+        <div className="mt-3 flex min-h-10 justify-center">
+          <ProductQuantity product={product} />
         </div>
       </div>
     </article>

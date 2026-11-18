@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Route, Routes, useLocation, useParams } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { StoreProvider } from "./context/StoreProvider";
 import { useStore } from "./hooks/useStore";
 import StoreLayout from "./layouts/StoreLayout";
@@ -20,6 +20,38 @@ import AdminProductEdit from "./pages/admin/AdminProductEdit";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminCategories from "./pages/admin/AdminCategories";
 
+const pageMetadata = {
+  "/catalogo": ["Catálogo", "Encontre produtos, categorias e ofertas na Vora Supermarket."],
+  "/carrinho": ["Meu carrinho", "Revise os produtos e calcule a entrega pelo CEP."],
+  "/checkout/endereco": ["Endereço de entrega", "Confira os dados de entrega do seu pedido."],
+  "/checkout/pagamento": ["Pagamento", "Confira o pedido e prossiga para o Mercado Pago."],
+  "/checkout/confirmacao": ["Acompanhar pedido", "Consulte a situação do seu pedido na Vora."],
+  "/entrar": ["Entrar", "Acesse sua conta na Vora Supermarket."],
+  "/cadastro": ["Criar conta", "Cadastre-se para fazer sua compra na Vora."],
+};
+
+function PageMetadata() {
+  const { pathname, search } = useLocation();
+  const { products, categoryNames } = useStore();
+  const product = pathname.startsWith("/produto/") && products.find((item) => "/produto/" + item.id === pathname);
+  const category = pathname.startsWith("/categoria/") && categoryNames[pathname.slice("/categoria/".length)];
+  const [title, description] = pageMetadata[pathname] ?? (
+    product ? [product.name, product.description || "Confira o produto e adicione ao carrinho."] :
+      category ? [category, "Explore os produtos de " + category + " na Vora."] :
+        pathname.startsWith("/pedido/") ? pageMetadata["/checkout/confirmacao"] :
+          pathname.startsWith("/admin") ? ["Painel da loja", "Área administrativa da Vora Supermarket."] :
+            ["Tudo que você precisa", "Produtos para o seu dia a dia, com qualidade de verdade e preço que faz bem."]
+  );
+  const offerPage = pathname === "/catalogo" && new URLSearchParams(search).get("ofertas") === "true";
+
+  useEffect(() => {
+    document.title = (offerPage ? "Ofertas da semana" : title) + " | VORA Supermarket";
+    document.querySelector('meta[name="description"]')?.setAttribute("content", description);
+  }, [title, description, offerPage]);
+
+  return null;
+}
+
 // Volta ao topo da página a cada navegação
 function ScrollToTop() {
   const { pathname, search } = useLocation();
@@ -27,6 +59,13 @@ function ScrollToTop() {
     window.scrollTo(0, 0);
   }, [pathname, search]);
   return null;
+}
+
+function RequireCustomer() {
+  const { user } = useStore();
+  const { pathname, search } = useLocation();
+  if (user) return <Outlet />;
+  return <Navigate to="/entrar" replace state={{ returnTo: pathname + search }} />;
 }
 
 // /categoria/:slug — só aceita categorias que existem
@@ -50,6 +89,7 @@ export default function App() {
   return (
     <StoreProvider>
       <ScrollToTop />
+      <PageMetadata />
       <Routes>
         {/* Páginas da loja */}
         <Route element={<StoreLayout />}>
@@ -58,13 +98,12 @@ export default function App() {
           <Route path="categoria/:slug" element={<CategoryPage />} />
           <Route path="produto/:id" element={<ProductDetail />} />
           <Route path="carrinho" element={<Cart />} />
-          <Route path="checkout/endereco" element={<CheckoutAddress />} />
-          <Route path="checkout/pagamento" element={<CheckoutPayment />} />
-          <Route
-            path="checkout/confirmacao"
-            element={<CheckoutConfirmation />}
-          />
-          <Route path="pedido/:id" element={<CheckoutConfirmation />} />
+          <Route element={<RequireCustomer />}>
+            <Route path="checkout/endereco" element={<CheckoutAddress />} />
+            <Route path="checkout/pagamento" element={<CheckoutPayment />} />
+            <Route path="checkout/confirmacao" element={<CheckoutConfirmation />} />
+            <Route path="pedido/:id" element={<CheckoutConfirmation />} />
+          </Route>
           <Route path="entrar" element={<Login />} />
           <Route path="cadastro" element={<Signup />} />
           <Route path="*" element={<NotFound />} />

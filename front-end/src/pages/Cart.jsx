@@ -43,7 +43,7 @@ export default function Cart() {
           <div className="grid gap-3">
             {cartItems.map((item) => (
               <div
-                className="grid grid-cols-[74px_1fr_auto_100px_auto] items-center gap-4 rounded-[16px] border border-border bg-card p-3 mobile:grid-cols-[60px_1fr_auto]"
+                className="grid grid-cols-[74px_minmax(0,1fr)_auto_100px_auto] items-center gap-4 rounded-card border bg-card p-3 mobile:grid-cols-[60px_minmax(0,1fr)_auto] mobile:gap-2.5"
                 key={item.id}
               >
                 <Link className="block size-[74px] overflow-hidden rounded-[12px] mobile:size-[60px]" to={`/produto/${item.id}`}>

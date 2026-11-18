@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { listarProdutos, readSession, request, writeSession } from "../services/api";
+import { listarProdutos, readPreference, readSession, request, writePreference, writeSession } from "../services/api";
 import { StoreContext } from "./store-context";
 
 function sessaoInicial(tipo) {
@@ -12,9 +12,9 @@ export function StoreProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [revision, setRevision] = useState(0);
-  const [cart, setCart] = useState(() => readSession("carrinho") ?? {});
+  const [cart, setCart] = useState(() => readPreference("carrinho") ?? {});
   const [cartOpen, setCartOpen] = useState(false);
-  const [favorites, setFavorites] = useState(() => readSession("favoritos") ?? []);
+  const [favorites, setFavorites] = useState(() => readPreference("favoritos") ?? []);
   const [address, setAddress] = useState({
     name: "", zip: "", street: "", number: "", complement: "",
     neighborhood: "", city: "", uf: "", freight: null, deliveryDays: null,
@@ -37,8 +37,8 @@ export function StoreProvider({ children }) {
     return () => controller.abort();
   }, [revision]);
 
-  useEffect(() => { writeSession("carrinho", cart); }, [cart]);
-  useEffect(() => { writeSession("favoritos", favorites); }, [favorites]);
+  useEffect(() => { writePreference("carrinho", cart); }, [cart]);
+  useEffect(() => { writePreference("favoritos", favorites); }, [favorites]);
   useEffect(() => {
     const timers = [[client, setClient, "cliente"], [admin, setAdmin, "admin"]]
       .filter(([sessao]) => sessao)
@@ -65,13 +65,13 @@ export function StoreProvider({ children }) {
     (adminLogin ? setAdmin : setClient)(sessao);
   }
 
-  function logout(tipo) {
+  function logout(tipo, { preserveAddress = false } = {}) {
     writeSession(tipo, null);
     if (tipo === "admin") {
       setAdmin(null);
     } else {
       setClient(null);
-      setAddress({
+      if (!preserveAddress) setAddress({
         name: "", zip: "", street: "", number: "", complement: "",
         neighborhood: "", city: "", uf: "", freight: null, deliveryDays: null,
       });
@@ -105,7 +105,7 @@ export function StoreProvider({ children }) {
       return next;
     }),
     clearCart: () => {
-      writeSession("carrinho", {});
+      writePreference("carrinho", {});
       setCart({});
     },
     toggleFavorite: (id) => setFavorites((f) =>
