@@ -10,17 +10,17 @@ function autenticar(req, res, next) {
 
   try {
     const dados = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Verificação para garantir que um admin não use rotas de cliente
+    if (dados.tipo === "admin") {
+      return res.status(401).json({ erro: "Token inválido ou expirado" });
+    }
+
     req.clienteId = dados.id;
     next();
   } catch (erro) {
     return res.status(401).json({ erro: "Token inválido ou expirado" });
   }
 }
-
-const dados = jwt.verify(token, process.env.JWT_SECRET);
-if (dados.tipo === "admin") {
-  return res.status(401).json({ erro: "Token inválido ou expirado" });
-}
-req.clienteId = dados.id;
 
 module.exports = autenticar;
