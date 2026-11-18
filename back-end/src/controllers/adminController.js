@@ -115,6 +115,11 @@ const atualizarProduto = tratar(async (req, res) => {
   res.status(200).json(await adminService.atualizarProduto(id, req.body ?? {}));
 });
 
+const excluirProduto = tratar(async (req, res) => {
+  const id = idDaRota(req, res);
+  if (id) res.json(await adminService.excluirProduto(id));
+});
+
 // ---------- categorias ----------
 const listarCategorias = tratar(async (req, res) => {
   res.status(200).json(await adminService.listarCategorias());
@@ -153,6 +158,11 @@ const atualizarCategoria = tratar(async (req, res) => {
     );
 });
 
+const excluirCategoria = tratar(async (req, res) => {
+  const id = idDaRota(req, res);
+  if (id) res.json(await adminService.atualizarCategoria(id, { status: 0 }));
+});
+
 // ---------- pedidos ----------
 const listarPedidos = tratar(async (req, res) => {
   res.status(200).json(await adminService.listarPedidos());
@@ -185,9 +195,11 @@ module.exports = {
   detalharProduto,
   criarProduto,
   atualizarProduto,
+  excluirProduto,
   listarCategorias,
   criarCategoria,
   atualizarCategoria,
+  excluirCategoria,
   listarPedidos,
   detalharPedido,
   alterarSituacaoPedido,

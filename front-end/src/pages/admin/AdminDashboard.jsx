@@ -1,6 +1,6 @@
 import { DollarSign, ClipboardList, Package, TriangleAlert } from "lucide-react";
 import { Link, useOutletContext } from "react-router-dom";
-import { formatPrice, stockStatus } from "../../data/products";
+import { formatPrice, stockStatus, STOCK_MINIMUM } from "../../data/products";
 import AdminHeading from "../../components/AdminHeading";
 import { adminCard, adminCardH2, adminCardTitle, adminStat, cx, crumbLink, orderTone, statusPill, stockTone } from "../../components/ui/styles";
 
@@ -13,7 +13,8 @@ export default function AdminDashboard() {
   const sales = orders.filter((o) => ["Pago", "Enviado", "Entregue"].includes(o.situacao))
     .reduce((s, o) => s + o.valor_total, 0) / 100;
   const inProgress = orders.filter((o) => !["Entregue", "Cancelado"].includes(o.situacao)).length;
-  const lowRows = rows.filter((r) => stockStatus(r.stock) !== "disponivel");
+  const lowRows = rows.filter((r) => r.active && r.categoryActive && r.stock < STOCK_MINIMUM)
+    .sort((a, b) => a.stock - b.stock);
 
   return (
     <>
@@ -42,15 +43,19 @@ export default function AdminDashboard() {
         <div className={adminCard}>
           <div className={adminCardTitle}>
             <h2 className={adminCardH2}>Repor estoque</h2>
-            <Link className={crumbLink} to="/admin/produtos">Produtos</Link>
+            <Link className={crumbLink} to="/admin/produtos?estoque=repor">Ver todos</Link>
           </div>
+          <p className="px-[23px] pb-3 text-sm text-muted-foreground">Mínimo de referência {STOCK_MINIMUM} un. por produto.</p>
+          {!lowRows.length && <p className="border-t border-border px-[23px] py-3 text-sm">Nenhum produto ativo precisa de reposição.</p>}
           {lowRows.slice(0, 6).map((r) => {
             const st = stockStatus(r.stock);
             return (
-              <div className={cx(simpleRow, "grid-cols-[1fr_auto_auto]")} key={r.id}>
-                <Link className={crumbLink} to={`/admin/produtos/${r.id}`}>{r.name}</Link>
-                <span>{r.stock} un.</span>
-                <span className={cx(statusPill, stockTone[st])}>{st === "baixo" ? "Baixo" : "Esgotado"}</span>
+              <div className={cx(simpleRow, "grid-cols-[minmax(0,1fr)_auto]")} key={r.id}>
+                <div className="min-w-0">
+                  <Link className={cx(crumbLink, "wrap-break-word")} to={`/admin/produtos/${r.id}`}>{r.name}</Link>
+                  <p className="text-xs text-muted-foreground">{r.stock} un. em estoque</p>
+                </div>
+                <span className={cx(statusPill, stockTone[st])}>Repor {STOCK_MINIMUM - r.stock} un.</span>
               </div>
             );
           })}

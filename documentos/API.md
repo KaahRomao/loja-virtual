@@ -49,9 +49,11 @@ O formulário da loja usa `POST /login` para clientes e administradores. As rota
 | GET `/admin/produtos/1` | ID na rota | 200 · `{"id":1,"nome_produto":"Banana Prata 1kg","situacao":"Ativo"}` |
 | POST `/admin/produtos` | `{"nome_produto":"Produto teste","descricao":"Produto do catálogo","preco":599,"estoque":10,"id_categoria":1}` | 201 · `{"id":17,"nome_produto":"Produto teste","preco":599}` |
 | PUT `/admin/produtos/17` | Objeto parcial, por exemplo `{"preco":549,"preco_anterior":599,"estoque":12}` | 200 · `{"id":17,"preco":549,"preco_anterior":599,"estoque":12}` |
+| DELETE `/admin/produtos/17` | ID na rota | 200 · `{"ids":[17]}`. Inativa a ficha e seus produtos equivalentes sem apagar o histórico. Para restaurar um registro, use PUT com `{"situacao":"Ativo"}`. |
 | GET `/admin/categorias` | Sem corpo | 200 · `[{"id":1,"nome_categoria":"Hortifruti","status":1}]` |
 | POST `/admin/categorias` | `{"nome_categoria":"Congelados"}` | 201 · `{"id":8,"nome_categoria":"Congelados","status":1}` |
 | PUT `/admin/categorias/8` | `{"nome_categoria":"Congelados e sorvetes"}` | 200 · `{"id":8,"nome_categoria":"Congelados e sorvetes","status":1}` |
+| DELETE `/admin/categorias/8` | ID na rota | 200 · `{"id":8,"status":0}`. Retorna 409 se houver produto ou subcategoria ativa. Para restaurar, use PUT com `{"status":1}`. |
 | GET `/admin/pedidos` | Sem corpo | 200 · `[{"id":1,"nome_cliente":"Cliente Teste","situacao":"Pago","valor_total":2199}]` |
 | GET `/admin/pedidos/1` | ID na rota | 200 · `{"id":1,"situacao":"Pago","itens":[{"id_produto":1,"quantidade":1}]}` |
 | PATCH `/admin/pedidos/1/situacao` | `{"situacao":"Enviado"}` | 200 · `{"id":1,"situacao":"Enviado"}` |

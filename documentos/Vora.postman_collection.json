@@ -1053,6 +1053,70 @@
           ]
         },
         {
+          "name": "Excluir produto da vitrine",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/admin/produtos/{{produto_admin_id}}",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "A ficha permanece inativa para preservar o histórico."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP esperado', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir categoria sem itens ativos",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/admin/categorias/{{categoria_id}}",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "A categoria de teste fica excluída assim que seu produto foi inativado."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP esperado', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Listar pedidos",
           "request": {
             "method": "GET",
