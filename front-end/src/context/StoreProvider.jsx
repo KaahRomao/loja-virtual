@@ -36,6 +36,11 @@ function normalizarFavoritos(favoritos, equivalentes) {
   return [...new Set(favoritos.map((id) => equivalentes.get(id) ?? id))];
 }
 
+function lerFavoritos(chave) {
+  const ids = readPreference(chave);
+  return Array.isArray(ids) ? ids : null;
+}
+
 function vincularCategorias(categorias) {
   const porId = new Map(categorias.map((categoria) => [categoria.id, categoria]));
   const membros = new Map(categorias.map(({ slug }) => [slug, new Set()]));
@@ -59,9 +64,10 @@ export function StoreProvider({ children }) {
   const [revision, setRevision] = useState(0);
   const [savedCart, setCart] = useState(() => readPreference("carrinho") ?? {});
   const [cartOpen, setCartOpen] = useState(false);
-  const [savedFavorites, setFavorites] = useState(() => readPreference("favoritos") ?? []);
+  const [savedFavorites, setFavorites] = useState(null);
   const [address, setAddress] = useState(enderecoVazio);
   const [account, setAccount] = useState(sessaoInicial);
+  const chaveFavoritos = account ? `favoritos_${account.role}_${account.id}` : "favoritos_visitante";
 
   function refreshProducts() {
     setLoading(true);
@@ -86,7 +92,13 @@ export function StoreProvider({ children }) {
   }, [revision]);
 
   useEffect(() => { writePreference("carrinho", savedCart); }, [savedCart]);
-  useEffect(() => { writePreference("favoritos", savedFavorites); }, [savedFavorites]);
+  useEffect(() => {
+    function sincronizar(evento) {
+      if (evento.key === null || evento.key === `vora_${chaveFavoritos}`) setFavorites(null);
+    }
+    window.addEventListener("storage", sincronizar);
+    return () => window.removeEventListener("storage", sincronizar);
+  }, [chaveFavoritos]);
   useEffect(() => {
     gravarSessao(account);
     if (!account) return;
@@ -126,7 +138,9 @@ export function StoreProvider({ children }) {
 
   const equivalentes = new Map(products.flatMap((product) => product.aliases.map((id) => [id, product.id])));
   const cart = normalizarCarrinho(savedCart, equivalentes);
-  const favorites = normalizarFavoritos(savedFavorites, equivalentes);
+  const favoritosDoPerfil = lerFavoritos(chaveFavoritos) ??
+    (savedFavorites?.chave === chaveFavoritos ? savedFavorites.ids : []);
+  const favorites = normalizarFavoritos(favoritosDoPerfil, equivalentes);
   const cartItems = products
     .filter((p) => cart[p.id] > 0)
     .map((p) => ({ ...p, qty: cart[p.id] }));
@@ -159,10 +173,12 @@ export function StoreProvider({ children }) {
       writePreference("carrinho", {});
       setCart({});
     },
-    toggleFavorite: (id) => setFavorites((saved) => {
-      const ids = normalizarFavoritos(saved, equivalentes);
-      return ids.includes(id) ? ids.filter((other) => other !== id) : [...ids, id];
-    }),
+    toggleFavorite: (id) => {
+      const ids = normalizarFavoritos(lerFavoritos(chaveFavoritos) ?? favoritosDoPerfil, equivalentes);
+      const next = ids.includes(id) ? ids.filter((other) => other !== id) : [...ids, id];
+      writePreference(chaveFavoritos, next);
+      setFavorites({ chave: chaveFavoritos, ids: next });
+    },
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

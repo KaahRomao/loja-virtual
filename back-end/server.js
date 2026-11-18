@@ -11,7 +11,7 @@ async function iniciar() {
   await require("./src/database/connection").inicializar();
   const render = process.env.RENDER === "true";
   const port = Number(process.env.PORT || (render ? 10000 : 3000));
-  const host = render ? "0.0.0.0" : process.env.HOST || "127.0.0.1";
+  const host = render ? "0.0.0.0" : process.env.VORA_HOST || "127.0.0.1";
   const server = app.listen(port, host);
   server.on("listening", () => {
     console.log(`API da VORA ouvindo em ${host} na porta ${server.address().port}`);

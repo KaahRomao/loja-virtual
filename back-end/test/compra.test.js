@@ -6,7 +6,9 @@ const { join } = require("node:path");
 const { once } = require("node:events");
 const { DatabaseSync } = require("node:sqlite");
 const { createHmac, randomUUID } = require("node:crypto");
+const { inspect } = require("node:util");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const { Payment, Preference } = require("mercadopago");
 
 test("API local com SQLite e respostas de teste das integrações", async (t) => {
@@ -85,6 +87,7 @@ test("API local com SQLite e respostas de teste das integrações", async (t) =>
   const post = (path, status, body, token) => chamar(path, status, { method: "POST", body, token });
   const cliente = { nome_cliente: "Cliente Teste", email: "cliente@example.invalid", senha: "senha-teste" };
   assert.deepEqual(await chamar("/health", 200), { status: "ok" });
+  assert.deepEqual(await chamar("/produtos/%E0%A4%A", 400), { erro: "Endereço da requisição inválido" });
   await post("/clientes", 400, {});
   await post("/clientes", 400, { ...cliente, senha: "a".repeat(73) });
   await post("/clientes", 201, cliente);
@@ -96,6 +99,11 @@ test("API local com SQLite e respostas de teste das integrações", async (t) =>
   const credenciaisAdmin = { email: "admin@example.invalid", senha: "senha-teste" };
   const admin = await post("/login", 200, credenciaisAdmin);
   assert.equal(admin.role, "admin");
+  for (const [jwtDeAcesso, papel] of [[token, "cliente"], [admin.token, "admin"]]) {
+    const { exp, iat, tipo } = jwt.decode(jwtDeAcesso);
+    assert.equal(tipo, papel);
+    assert.equal(exp - iat, 7200);
+  }
   assert.equal((await post("/admin/login", 200, credenciaisAdmin)).admin.id, admin.admin.id);
   await post("/clientes", 409, { ...cliente, email: credenciaisAdmin.email.toUpperCase() });
   await chamar("/admin/produtos", 401, { token });
@@ -238,4 +246,60 @@ test("API local com SQLite e respostas de teste das integrações", async (t) =>
   assert.equal(persisted.prepare("SELECT count(*) AS n FROM pagamento").get().n, 4);
   assert.equal(persisted.prepare("PRAGMA quick_check").get().quick_check, "ok");
   persisted.close();
+
+  await t.test("exclusão do catálogo é protegida e mantém o histórico de compras", async () => {
+    const categoria = await post("/admin/categorias", 201, { nome_categoria: "Categoria de arquivamento" }, admin.token);
+    const subcategoria = await post("/admin/categorias", 201, {
+      nome_categoria: "Subcategoria de arquivamento", id_categoria_pai: categoria.id,
+    }, admin.token);
+    const dados = {
+      nome_produto: "Produto de arquivamento", descricao: "Ficha equivalente", preco: 499,
+      estoque: 3, id_categoria: subcategoria.id,
+    };
+    const primeiro = await post("/admin/produtos", 201, dados, admin.token);
+    const equivalente = await post("/admin/produtos", 201, { ...dados, estoque: 8 }, admin.token);
+    const apagar = (path, status, jwt = admin.token) => chamar(path, status, { method: "DELETE", token: jwt });
+    const alterar = (path, status, body) => chamar(path, status, { method: "PUT", body, token: admin.token });
+    const caminhos = {
+      principal: `/admin/produtos/${primeiro.id}`,
+      categoria: `/admin/categorias/${categoria.id}`,
+      subcategoria: `/admin/categorias/${subcategoria.id}`,
+    };
+    const historico = await post("/pedidos", 201, {
+      ...compra, chave_checkout: randomUUID(), itens: [{ id_produto: primeiro.id, quantidade: 1 }],
+    }, token);
+    await apagar(caminhos.principal, 401, token);
+    await apagar(caminhos.categoria, 401, token);
+    await apagar(caminhos.categoria, 409);
+    await apagar(caminhos.subcategoria, 409);
+    const removidos = await apagar(caminhos.principal, 200);
+    assert.deepEqual(removidos.ids.toSorted(), [primeiro.id, equivalente.id].toSorted());
+    await chamar(`/produtos/${primeiro.id}`, 404);
+    await chamar(`/produtos/${equivalente.id}`, 404);
+    assert.deepEqual((await chamar(`/pedidos/${historico.id}`, 200, { token })).itens, historico.itens);
+    assert.equal((await apagar(caminhos.subcategoria, 200)).status, 0);
+    assert.equal((await apagar(caminhos.categoria, 200)).status, 0);
+    assert.ok(!(await chamar("/categorias", 200)).some((c) => c.id === categoria.id || c.id === subcategoria.id));
+    await alterar(caminhos.subcategoria, 409, { status: 1 });
+    await alterar(caminhos.principal, 409, { situacao: "Ativo" });
+    await post("/admin/produtos", 409, dados, admin.token);
+    await alterar(caminhos.categoria, 200, { status: 1 });
+    await alterar(caminhos.subcategoria, 200, { status: 1 });
+    assert.equal((await alterar(caminhos.principal, 200, { situacao: "Ativo" })).estoque, 2);
+    await chamar(`/produtos/${primeiro.id}`, 200);
+    await chamar(`/produtos/${equivalente.id}`, 404);
+  });
+
+  await t.test("erros internos preservam o código sem divulgar detalhes", async (caso) => {
+    const sentinela = "detalhe-sintetico-da-integracao";
+    const erros = [];
+    caso.mock.method(console, "error", (...args) => erros.push(inspect(args)));
+    const produtoService = require("../src/services/produtoService");
+    caso.mock.method(produtoService, "listarProdutos", async () => {
+      throw Object.assign(new Error(sentinela), { code: "FALHA_TESTE", cause: { token: sentinela } });
+    });
+    assert.deepEqual(await chamar("/produtos", 500), { erro: "Erro interno do servidor" });
+    assert.match(erros.join("\n"), /FALHA_TESTE/);
+    assert.ok(erros.every((linha) => !linha.includes(sentinela)));
+  });
 });

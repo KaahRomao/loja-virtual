@@ -1,6 +1,6 @@
 const pedidoService = require("../services/pedidoService");
 
-async function criar(req, res) {
+async function criar(req, res, next) {
   try {
     const { itens, endereco_entrega, cep_entrega, chave_checkout } = req.body ?? {};
 
@@ -65,12 +65,11 @@ async function criar(req, res) {
     if (erro.codigo === "CEP_SERVICO_INDISPONIVEL") {
       return res.status(502).json({ erro: erro.message });
     }
-    console.error(erro);
-    res.status(500).json({ erro: "Erro interno do servidor" });
+    return next(erro);
   }
 }
 
-async function detalhar(req, res) {
+async function detalhar(req, res, next) {
   try {
     const id = Number(req.params.id);
 
@@ -86,12 +85,11 @@ async function detalhar(req, res) {
 
     return res.status(200).json(pedido);
   } catch (erro) {
-    console.error(erro);
-    return res.status(500).json({ erro: "Erro interno do servidor" });
+    return next(erro);
   }
 }
 
-async function pagar(req, res) {
+async function pagar(req, res, next) {
   try {
     const id = Number(req.params.id);
     if (!Number.isSafeInteger(id) || id <= 0) {
@@ -119,8 +117,7 @@ async function pagar(req, res) {
     if (erro.codigo === "MP_INDISPONIVEL") {
       return res.status(502).json({ erro: erro.message });
     }
-    console.error(erro);
-    return res.status(500).json({ erro: "Erro interno do servidor" });
+    return next(erro);
   }
 }
 

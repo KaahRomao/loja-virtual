@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
-import { camposDePreco } from "../../data/products";
+import { camposDePreco, STOCK_MINIMUM } from "../../data/products";
 import AdminHeading from "../../components/AdminHeading";
 import ProductPhoto from "../../components/ProductPhoto";
 import Button from "../../components/ui/Button";
@@ -8,7 +8,7 @@ import { cx, formCard, formError, formInput, formLabel, pillLink } from "../../c
 
 // id = "novo" cadastra um produto; qualquer outro número edita o produto existente
 export default function AdminProductEdit({ id }) {
-  const { rows, categories, saveProduct } = useOutletContext();
+  const { rows, categories, saveProduct, deleteProduct } = useOutletContext();
   const navigate = useNavigate();
   const isNew = id === "novo";
   const row = isNew ? null : rows.find((r) => r.id === Number(id));
@@ -17,7 +17,7 @@ export default function AdminProductEdit({ id }) {
   const [form, setForm] = useState({
     name: row?.name || "",
     unit: row?.unit || "",
-    category: String(row?.categoryId ?? categories[0]?.id ?? ""),
+    category: String(row?.categoryId ?? categories.find((c) => c.status === 1)?.id ?? ""),
     imageUrl: row?.imageUrl || "",
     price: row ? row.price.toFixed(2) : "",
     oldPrice: row?.oldPrice ? row.oldPrice.toFixed(2) : "",
@@ -31,6 +31,7 @@ export default function AdminProductEdit({ id }) {
   }
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value }));
+  const saldo = form.stock.trim() && /^\d+$/.test(form.stock.trim()) ? Number(form.stock) : null;
 
   const submit = async (e) => {
     e.preventDefault();
@@ -56,6 +57,20 @@ export default function AdminProductEdit({ id }) {
     }
   };
 
+  async function excluir() {
+    if (!window.confirm(`Excluir "${row.name}" do catálogo? Fichas equivalentes também saem da loja. O histórico de pedidos é preservado.`)) return;
+    setError("");
+    setBusy(true);
+    try {
+      await deleteProduct(row.id);
+      navigate("/admin/produtos", { replace: true });
+    } catch (erro) {
+      setError(erro.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <>
       <AdminHeading
@@ -75,20 +90,30 @@ export default function AdminProductEdit({ id }) {
           <label className={formLabel}>
             Categoria
             <select className={formInput} value={form.category} onChange={set("category")}>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.nome_categoria}</option>)}
+              <option value="" disabled>Selecione uma categoria</option>
+              {categories.filter((c) => c.status === 1 || c.id === row?.categoryId)
+                .map((c) => <option key={c.id} value={c.id}>{c.nome_categoria}{c.status === 0 && " (excluída)"}</option>)}
             </select>
           </label>
         </div>
         <div className="grid grid-cols-[repeat(3,1fr)] gap-3 mobile:grid-cols-[1fr]">
           <label className={formLabel}>Preço atual (R$)<input className={formInput} inputMode="decimal" value={form.price} onChange={set("price")} /></label>
           <label className={formLabel}>Preço "de" (R$)<input className={formInput} inputMode="decimal" placeholder="Sem oferta" value={form.oldPrice} onChange={set("oldPrice")} /></label>
-          <label className={formLabel}>Estoque (un.)<input className={formInput} inputMode="numeric" value={form.stock} onChange={set("stock")} /></label>
+          <label className={formLabel}>
+            Estoque (un.)
+            <input className={formInput} inputMode="numeric" value={form.stock} onChange={set("stock")} />
+            {form.active && saldo !== null && saldo < STOCK_MINIMUM && (
+              <small className="text-muted-foreground">Faltam {STOCK_MINIMUM - saldo} un. para chegar a {STOCK_MINIMUM}.</small>
+            )}
+          </label>
         </div>
         <label className={formLabel}>Imagem (URL opcional)<input className={formInput} value={form.imageUrl} onChange={set("imageUrl")} /></label>
         <label className={formLabel}>Descrição<textarea className={formInput} rows={3} value={form.description} onChange={set("description")} /></label>
         <label className="flex items-center gap-2"><input type="checkbox" checked={form.active} onChange={set("active")} /> Mostrar na loja</label>
-        {error && <p className={formError}>{error}</p>}
+        {row && !row.active && <p className="text-sm text-muted-foreground">Marque “Mostrar na loja” e salve para restaurar este produto.</p>}
+        {error && <p className={formError} role="alert">{error}</p>}
         <div className="mt-1.5 flex flex-wrap justify-between gap-2.5">
+          {row?.active && <Button variant="outline" className="text-destructive" onClick={excluir} disabled={busy}>Excluir produto</Button>}
           <Link className={pillLink("outline", "md")} to="/admin/produtos">Cancelar</Link>
           <Button type="submit" size="lg" disabled={busy}>{busy ? "Salvando…" : isNew ? "Cadastrar produto" : "Salvar alterações"}</Button>
         </div>
