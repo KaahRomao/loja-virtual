@@ -15,9 +15,13 @@ async function login({ email, senha }) {
     throw erro;
   }
 
-  const token = jwt.sign({ id: cliente.id }, process.env.JWT_SECRET, {
-    expiresIn: "2h",
-  });
+  const token = jwt.sign(
+    { id: cliente.id, tipo: "cliente" },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: "2h",
+    },
+  );
 
   return {
     token,

@@ -6,6 +6,7 @@ const pedidoRoutes = require("./routes/pedidoRoutes");
 const cors = require("cors");
 const cepRoutes = require("./routes/cepRoutes");
 const pagamentoRoutes = require("./routes/pagamentoRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 const app = express();
 
 app.use(cors());
@@ -22,5 +23,6 @@ app.use("/login", authRoutes);
 app.use("/pedidos", pedidoRoutes);
 app.use("/cep", cepRoutes);
 app.use("/pagamentos", pagamentoRoutes);
+app.use("/admin", adminRoutes);
 
 module.exports = app;

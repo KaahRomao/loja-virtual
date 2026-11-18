@@ -1,15 +1,10 @@
 const { createClient } = require("@libsql/client");
 
-<<<<<<< HEAD
 // Verifica se as variáveis do Turso estão configuradas
 if (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
   console.warn(
     "⚠️ Variáveis do Turso não configuradas. Usando banco local (se existir).",
   );
-=======
-if (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
-  console.warn("⚠️ Variáveis do Turso não configuradas.");
->>>>>>> vercel
 }
 
 const db = createClient({
