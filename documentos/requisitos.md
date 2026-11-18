@@ -34,7 +34,7 @@ flowchart LR
   G --> R[Acompanhar e atualizar pedidos]
 ```
 
-A regra de entrega é R$ 15 e até 3 dias úteis para São Paulo, R$ 20 e até 5 dias úteis para RJ, MG e ES, e R$ 30 e até 8 dias úteis para os demais estados. O SQLite guarda pedidos e tentativas de pagamento. O carrinho da interface é compartilhado entre as páginas e preservado na sessão da aba.
+A regra de entrega é R$ 15 e até 3 dias úteis para São Paulo, R$ 20 e até 5 dias úteis para RJ, MG e ES, e R$ 30 e até 8 dias úteis para os demais estados. O SQLite guarda pedidos e tentativas de pagamento. O carrinho e os favoritos ficam no navegador. A API usa o mesmo login para os dois papéis e permite a cada cliente ver seu próprio histórico.
 
 ## Complemento do dicionário de dados
 

@@ -7,7 +7,12 @@ export const categoryTaglines = {
   bebidas: "Para matar a sede",
   "laticinios-e-frios": "Cremosos e fresquinhos",
   padaria: "Quentinho para o café",
+  congelados: "Vegetais, pratos e porções",
 };
+
+export function storeCategories(categoryNames) {
+  return { ...categoryNames, congelados: categoryNames.congelados ?? "Congelados" };
+}
 
 export const formatPrice = (v) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
@@ -43,9 +48,13 @@ export const orderTransitions = {
   Cancelado: [],
 };
 
-export const formatOrderDate = (data) =>
-  new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" })
-    .format(new Date(data.replace(" ", "T") + "Z"));
+export function formatOrderDate(data) {
+  if (!data) return "Data indisponível";
+  const iso = data.replace(" ", "T");
+  const date = new Date(/[zZ]|[+-]\d\d:\d\d$/.test(iso) ? iso : iso + "Z");
+  return Number.isNaN(date.getTime()) ? "Data indisponível" :
+    new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
+}
 
 export function camposDePreco(price, oldPrice, stock) {
   const preco = /^\d+(?:[.,]\d{1,2})?$/.test(price) ? Math.round(Number(price.replace(",", ".")) * 100) : 0;

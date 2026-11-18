@@ -106,6 +106,11 @@ function inicializar() {
       BEGIN
         UPDATE produto SET estoque = estoque - NEW.quantidade WHERE id = NEW.id_produto;
       END`);
+    await tx.execute("CREATE TABLE IF NOT EXISTS migracao (nome TEXT PRIMARY KEY)");
+    const { rowsAffected } = await tx.execute("INSERT OR IGNORE INTO migracao(nome) VALUES ('ofertas-iniciais')");
+    if (rowsAffected) {
+      await tx.executeMultiple(readFileSync(join(scripts, "ofertas-iniciais.sql"), "utf8"));
+    }
   });
   return inicializacao;
 }

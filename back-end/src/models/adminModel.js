@@ -29,8 +29,8 @@ async function idSituacao(nome, executor = db) {
 
 async function buscarAdminPorEmail(email) {
   const r = await db.execute({
-    sql: "SELECT id, nome, email, senha, status FROM administrador WHERE email = ?",
-    args: [email],
+    sql: "SELECT id, nome, email, senha, status FROM administrador WHERE email = ? COLLATE NOCASE ORDER BY email = ? DESC, id LIMIT 1",
+    args: [email, email],
   });
   return r.rows[0];
 }

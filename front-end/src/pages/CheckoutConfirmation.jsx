@@ -14,7 +14,7 @@ export default function CheckoutConfirmation() {
   if (!pedidoId) {
     return <p className="container-shell py-16">Nenhum pedido para acompanhar nesta sessão.</p>;
   }
-  return <Pedido key={`${user.id}-${pedidoId}`} id={pedidoId} token={user.token} expirar={() => logout("cliente")} />;
+  return <Pedido key={`${user.id}-${pedidoId}`} id={pedidoId} token={user.token} expirar={logout} />;
 }
 
 function Pedido({ id, token, expirar }) {

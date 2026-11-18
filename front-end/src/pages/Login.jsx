@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useStore } from "../hooks/useStore";
-import { checkoutDestination } from "../data/checkout";
-import { readSession } from "../services/api";
+import { loginDestination } from "../data/checkout";
+import { logoImage } from "../assets";
 import Button from "../components/ui/Button";
-import { crumbLink, formCard, formError, formInput, formLabel, pillLink } from "../components/ui/styles";
+import { crumbLink, formCard, formError, formInput, formLabel } from "../components/ui/styles";
 
 export default function Login() {
-  const { user, login, logout } = useStore();
+  const { account, login } = useStore();
   const { state } = useLocation();
-  const returnTo = checkoutDestination(state);
+  const returnTo = loginDestination(state);
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,8 +24,8 @@ export default function Login() {
     setError("");
     setBusy(true);
     try {
-      await login("cliente", email, password);
-      navigate(returnTo ?? "/", { replace: true });
+      const conta = await login(email, password);
+      navigate(returnTo ?? (conta.role === "admin" ? "/admin" : "/conta"), { replace: true });
     } catch (erro) {
       setError(erro.message);
     } finally {
@@ -33,18 +33,7 @@ export default function Login() {
     }
   };
 
-  if (user) {
-    if (returnTo) return <Navigate to={returnTo} replace />;
-    const ultimo = readSession(`pedido_${user.id}`);
-    return (
-      <section className="container-shell grid justify-items-start gap-4 py-16">
-        <h1 className="font-display text-3xl font-bold text-deep">Minha conta</h1>
-        <p>{user.name}</p>
-        {ultimo && <Link className={pillLink("outline", "md")} to={`/pedido/${ultimo}`}>Acompanhar último pedido</Link>}
-        <Button variant="outline" onClick={() => logout("cliente")}>Sair</Button>
-      </section>
-    );
-  }
+  if (account) return <Navigate to={returnTo ?? (account.role === "admin" ? "/admin" : "/conta")} replace />;
 
   return (
     <section className="container-shell grid place-items-center pt-[50px] pb-[90px]">
@@ -53,6 +42,7 @@ export default function Login() {
         noValidate
         onSubmit={submit}
       >
+        <img src={logoImage} alt="VORA" className="brand-logo mb-1" width="148" height="48" />
         <h1 className="font-display text-[28px] font-bold leading-[normal] text-deep">Entrar na sua conta</h1>
         {returnTo && <p className="text-sm text-muted-foreground">Entre para continuar de onde parou.</p>}
         <label className={formLabel}>

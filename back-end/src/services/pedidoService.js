@@ -8,7 +8,13 @@ async function criarPedido({ idCliente, itens, endereco_entrega, cep_entrega, ch
   const dados = { endereco_entrega, cep_entrega, chave_checkout, id_cliente: idCliente };
   const quantidades = new Map();
   for (const item of itens) {
-    quantidades.set(item.id_produto, (quantidades.get(item.id_produto) ?? 0) + item.quantidade);
+    const quantidade = (quantidades.get(item.id_produto) ?? 0) + item.quantidade;
+    if (!Number.isSafeInteger(quantidade)) {
+      const erro = new Error("Quantidade total do produto acima do limite permitido");
+      erro.codigo = "TOTAL_INVALIDO";
+      throw erro;
+    }
+    quantidades.set(item.id_produto, quantidade);
   }
   const existente = await pedidoModel.buscarReenvio(dados, quantidades);
   if (existente) return existente;
@@ -39,4 +45,4 @@ async function obterPreferencia(pedido) {
   return pedidoModel.salvarPreferencia(pedido.id, preferencia);
 }
 
-module.exports = { criarPedido, detalharPedido: pedidoModel.buscarPedido, gerarPreferencia };
+module.exports = { criarPedido, detalharPedido: pedidoModel.buscarPedido, listarPedidos: pedidoModel.listarPedidos, gerarPreferencia };

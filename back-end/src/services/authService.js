@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const clienteModel = require("../models/clienteModel");
+const adminService = require("./adminService");
 
 async function login({ email, senha }) {
   const cliente = await clienteModel.buscarPorEmail(email);
@@ -9,11 +10,7 @@ async function login({ email, senha }) {
     ? await bcrypt.compare(senha, cliente.senha)
     : false;
 
-  if (!cliente || cliente.status !== 1 || !senhaConfere) {
-    const erro = new Error("Email ou senha inválidos");
-    erro.codigo = "CREDENCIAIS_INVALIDAS";
-    throw erro;
-  }
+  if (!cliente || cliente.status !== 1 || !senhaConfere) return adminService.login({ email, senha });
 
   const token = jwt.sign(
     { id: cliente.id, tipo: "cliente" },
@@ -25,6 +22,7 @@ async function login({ email, senha }) {
 
   return {
     token,
+    role: "cliente",
     cliente: {
       id: cliente.id,
       nome_cliente: cliente.nome_cliente,

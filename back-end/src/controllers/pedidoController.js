@@ -121,4 +121,12 @@ async function pagar(req, res) {
   }
 }
 
-module.exports = { criar, detalhar, pagar };
+async function listar(req, res, next) {
+  try {
+    res.json(await pedidoService.listarPedidos(req.clienteId));
+  } catch (erro) {
+    next(erro);
+  }
+}
+
+module.exports = { criar, detalhar, listar, pagar };

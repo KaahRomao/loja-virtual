@@ -89,9 +89,14 @@ test("API local com SQLite e respostas de teste das integrações", async (t) =>
   await post("/clientes", 201, cliente);
   await post("/clientes", 409, cliente);
   await post("/login", 401, { ...cliente, senha: "errada" });
-  const { token } = await post("/login", 200, cliente);
+  const { token, role } = await post("/login", 200, { ...cliente, email: cliente.email.toUpperCase() });
+  assert.equal(role, "cliente");
 
-  const admin = await post("/admin/login", 200, { email: "admin@example.invalid", senha: "senha-teste" });
+  const credenciaisAdmin = { email: "admin@example.invalid", senha: "senha-teste" };
+  const admin = await post("/login", 200, credenciaisAdmin);
+  assert.equal(admin.role, "admin");
+  assert.equal((await post("/admin/login", 200, credenciaisAdmin)).admin.id, admin.admin.id);
+  await post("/clientes", 409, { ...cliente, email: credenciaisAdmin.email.toUpperCase() });
   await chamar("/admin/produtos", 401, { token });
   await post("/pedidos", 401, {}, admin.token);
 
@@ -99,6 +104,15 @@ test("API local com SQLite e respostas de teste das integrações", async (t) =>
   assert.equal(catalogo.length, 16);
   const [banana] = await chamar("/produtos?busca=Banana", 200);
   assert.equal(banana.nome_produto, "Banana Prata 1kg");
+  assert.equal(banana.preco, 599);
+  assert.equal(banana.preco_anterior, 699);
+  const { lastInsertRowid } = await db.execute(`
+    INSERT INTO produto (nome_produto, descricao, img_url, preco, estoque, id_categoria, id_situacao)
+    SELECT nome_produto, descricao, img_url, preco, estoque + 1, id_categoria, id_situacao FROM produto WHERE id = 1
+  `);
+  const oferta = await chamar("/produtos?busca=Banana", 200);
+  assert.equal(oferta.length, 1);
+  assert.deepEqual(oferta[0].ids_equivalentes, [Number(lastInsertRowid)]);
   assert.ok((await chamar("/produtos?categoria=1", 200)).some((p) => p.id === banana.id));
   await chamar("/produtos/999", 404);
   assert.equal((await chamar("/cep/01001000", 200)).valor_frete, 1500);
@@ -119,6 +133,7 @@ test("API local com SQLite e respostas de teste das integrações", async (t) =>
     post("/pedidos", 201, compra, token), post("/pedidos", 201, compra, token),
   ]);
   assert.equal(pedido.id, repetido.id);
+  assert.deepEqual((await chamar("/pedidos", 200, { token })).map((p) => p.id), [pedido.id]);
   const conflito = await post("/pedidos", 409, { ...compra, endereco_entrega: "Praça da Sé, 2" }, token);
   assert.match(conflito.erro, /chave do checkout/);
   assert.equal(pedido.valor_total, banana.preco + 1500);
@@ -127,6 +142,7 @@ test("API local com SQLite e respostas de teste das integrações", async (t) =>
   const outro = { ...cliente, email: "outro@example.invalid" };
   await post("/clientes", 201, outro);
   const sessaoOutro = await post("/login", 200, outro);
+  assert.deepEqual(await chamar("/pedidos", 200, { token: sessaoOutro.token }), []);
   await chamar(`/pedidos/${pedido.id}`, 404, { token: sessaoOutro.token });
   await post("/pagamentos/sincronizar", 404, { pedido_id: pedido.id }, sessaoOutro.token);
 

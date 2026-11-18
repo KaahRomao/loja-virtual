@@ -70,6 +70,7 @@ export const slugify = (texto) =>
 export function adaptarProduto(p) {
   return {
     id: p.id,
+    aliases: p.ids_equivalentes ?? [],
     name: p.nome_produto,
     unit: p.unidade || "",
     price: p.preco / 100,

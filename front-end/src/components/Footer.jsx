@@ -10,14 +10,10 @@ export default function Footer() {
   const { categoryNames } = useStore();
   return (
     <footer className="bg-footer text-primary-foreground">
-      <div className="container-shell grid grid-cols-[2.2fr_1fr_1fr_1.35fr] gap-10 pt-[55px] pb-[49px] mobile:grid-cols-[1fr_1fr] mobile:gap-[29px] mobile:py-[42px]">
+      <div className="container-shell grid grid-cols-[2.2fr_1fr_1fr] gap-10 pt-[55px] pb-[49px] mobile:grid-cols-[1fr_1fr] mobile:gap-[29px] mobile:py-[42px]">
         <div className="mobile:col-span-full">
           <img className="brand-logo brightness-0 invert" src={logoImage} width="148" height="48" alt="VORA" />
-          <p className={footerText}>
-            Tudo que você precisa.
-            <br />
-            Do básico ao especial, com economia e carinho.
-          </p>
+          <p className={footerText}>Supermercado online</p>
         </div>
         <div>
           <h3 className={footerTitle}>Explore</h3>
@@ -29,13 +25,8 @@ export default function Footer() {
           <h3 className={footerTitle}>Sua compra</h3>
           <Link className={footerLink} to="/carrinho">Meu carrinho</Link>
           <Link className={footerLink} to="/catalogo">Todos os produtos</Link>
-          <Link className={footerLink} to="/entrar">Minha conta</Link>
-        </div>
-        <div>
-          <h3 className={footerTitle}>VORA supermarket</h3>
-          <Link className="mt-3.5 mb-[9px] block text-[12px] underline opacity-60 hover:opacity-100" to="/admin">
-            Área do administrador
-          </Link>
+          <Link className={footerLink} to="/conta">Minha conta</Link>
+          <Link className={footerLink} to="/favoritos">Favoritos</Link>
         </div>
       </div>
       <div className="container-shell border-t border-white/14 py-[17px] text-[11px] opacity-[.66]">

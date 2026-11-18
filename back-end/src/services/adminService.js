@@ -35,6 +35,7 @@ async function login({ email, senha }) {
   );
   return {
     token,
+    role: "admin",
     admin: { id: admin.id, nome: admin.nome, email: admin.email },
   };
 }

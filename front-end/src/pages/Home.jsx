@@ -1,15 +1,15 @@
 import { useRef } from "react";
 import {
   Apple, ArrowLeft, ArrowRight, Carrot, CupSoda, Milk, ShoppingBasket,
-  Sparkles, Tag, Truck, Wheat,
+  Snowflake, Wheat,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
+import PromotionCarousel from "../components/PromotionCarousel";
 import SectionHeading from "../components/SectionHeading";
-import { categoryTaglines, discountPercent } from "../data/products";
+import { categoryTaglines, discountPercent, storeCategories } from "../data/products";
 import { useStore } from "../hooks/useStore";
-import { heroImage } from "../assets";
-import { cx, pillLink, textArrow } from "../components/ui/styles";
+import { cx, textArrow } from "../components/ui/styles";
 
 const categoryIcons = {
   frutas: Apple,
@@ -18,6 +18,7 @@ const categoryIcons = {
   bebidas: CupSoda,
   "laticinios-e-frios": Milk,
   padaria: Wheat,
+  congelados: Snowflake,
 };
 const tileColors = ["bg-pale", "bg-cream", "bg-secondary"];
 
@@ -33,7 +34,7 @@ function uniqueProducts(products) {
 
 function ProductShelf({ items, offers = false }) {
   const rail = useRef(null);
-  const title = offers ? "Ofertas da semana" : "Em destaque";
+  const title = offers ? "Produtos em oferta" : "Em destaque";
 
   function scroll(direction) {
     const track = rail.current;
@@ -44,7 +45,6 @@ function ProductShelf({ items, offers = false }) {
     <section id={offers ? "ofertas" : "destaques"} className="container-shell py-14 mobile:py-9">
       <SectionHeading
         title={title}
-        text={offers ? "Economize no que não pode faltar em casa." : "Encontre o básico de sempre para a sua lista."}
       >
         <div className="flex items-center gap-2">
           <Link className={cx(textArrow, "mr-2 text-sm")} to={offers ? "/catalogo?ofertas=true" : "/catalogo"}>
@@ -72,46 +72,15 @@ export default function Home() {
 
   return (
     <>
-      <section className="bg-cream py-5 mobile:py-3" aria-labelledby="home-title">
-        <div className="container-shell relative isolate grid min-h-[455px] items-center overflow-hidden rounded-[28px] bg-pale tablet:min-h-[420px] mobile:min-h-0 mobile:rounded-[22px]">
-          <img
-            className="absolute inset-y-0 right-0 -z-20 h-full w-[68%] object-cover object-right tablet:w-[75%] mobile:relative mobile:inset-auto mobile:order-2 mobile:h-[170px] mobile:w-full mobile:object-[center_62%]"
-            src={heroImage}
-            alt=""
-            fetchPriority="high"
-          />
-          <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,var(--color-pale)_0%,var(--color-pale)_36%,transparent_78%)] mobile:hidden" />
-          <div className="max-w-[660px] px-[clamp(24px,5vw,68px)] py-12 mobile:py-7">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-2 text-[10px] font-black tracking-[.08em] text-deep uppercase">
-              <Sparkles size={14} aria-hidden="true" /> O mercado da sua família
-            </span>
-            <h1 id="home-title" className="mt-5 font-display text-[clamp(43px,4.05vw,64px)] font-semibold leading-[1.04] text-deep mobile:mt-4 mobile:text-[clamp(32px,8.7vw,48px)]">
-              Tudo que você precisa. <span className="block text-primary">Do jeitinho que cabe no bolso.</span>
-            </h1>
-            <p className="mt-5 max-w-[370px] text-base leading-relaxed text-deep mobile:mt-3 mobile:text-sm">
-              Produtos para o seu dia a dia, com qualidade de verdade e preço que faz bem.
-            </p>
-            <div className="mt-7 flex flex-wrap gap-2.5 mobile:mt-5">
-              <Link className={pillLink("primary", "lg")} to="/catalogo">Comprar agora <ArrowRight size={18} /></Link>
-              {(offers.length > 0 || highlights.length > 0) && (
-                <a className={pillLink("amber")} href={offers.length ? "#ofertas" : "#destaques"}>{offers.length ? "Ver ofertas" : "Ver destaques"}</a>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="container-shell mt-4 flex flex-wrap items-center justify-center gap-x-9 gap-y-2 px-3 pb-1 text-sm font-extrabold text-deep mobile:justify-start mobile:gap-x-4 mobile:text-xs">
-          <span className="inline-flex items-center gap-2"><Truck size={18} aria-hidden="true" /> Frete calculado pelo CEP</span>
-          <Link to="/catalogo?ofertas=true" className="inline-flex items-center gap-2 hover:underline"><Tag size={17} aria-hidden="true" /> Confira as ofertas</Link>
-        </div>
-      </section>
+      <PromotionCarousel offers={offers} />
 
       {offers.length > 0 ? <ProductShelf items={offers} offers /> : highlights.length > 0 && <ProductShelf items={highlights} />}
 
       <section className="bg-secondary/50 py-14 mobile:py-9">
         <div className="container-shell">
-          <SectionHeading title="Compre por categoria" text="Encontre tudo para sua próxima compra." />
+          <SectionHeading title="Compre por categoria" />
           <div className="grid grid-cols-3 gap-3 mobile:grid-cols-2">
-            {Object.entries(categoryNames).map(([slug, name], index) => {
+            {Object.entries(storeCategories(categoryNames)).map(([slug, name], index) => {
               const Icon = categoryIcons[slug] ?? ShoppingBasket;
               return (
                 <Link
@@ -136,12 +105,6 @@ export default function Home() {
 
       {offers.length > 0 && highlights.length > 0 && <ProductShelf items={highlights} />}
 
-      <section className="container-shell py-10">
-        <div className="flex flex-wrap items-center justify-between gap-5 rounded-[22px] bg-deep px-8 py-7 text-primary-foreground mobile:px-5">
-          <h2 className="font-display text-[29px] font-medium">Sua lista fica mais leve por aqui.</h2>
-          <Link className={pillLink("light")} to="/catalogo">Explorar produtos <ArrowRight size={18} /></Link>
-        </div>
-      </section>
     </>
   );
 }

@@ -12,6 +12,7 @@ export default function CheckoutPayment() {
   const { cartItems, address, total, user, clearCart, refreshProducts, logout } = useStore();
   const navigate = useNavigate();
   const tentativa = useRef(null);
+  const enviando = useRef(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -20,6 +21,8 @@ export default function CheckoutPayment() {
   }
 
   async function confirmar() {
+    if (enviando.current) return;
+    enviando.current = true;
     setBusy(true);
     setError("");
     const endereco = [address.name, `${address.street}, ${address.number}`, address.complement,
@@ -48,10 +51,11 @@ export default function CheckoutPayment() {
       navigate(`/pedido/${pedido.id}`, { replace: true });
     } catch (erro) {
       if (erro.status === 401) {
-        logout("cliente", { preserveAddress: true });
+        logout({ preserveAddress: true });
         navigate("/entrar", { replace: true, state: { returnTo: "/checkout/pagamento" } });
       } else setError(erro.message);
     } finally {
+      enviando.current = false;
       setBusy(false);
     }
   }

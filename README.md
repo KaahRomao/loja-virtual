@@ -79,6 +79,7 @@ O teste da API abre um servidor em loopback e cria um SQLite temporário. As res
 - [API e exemplos](documentos/API.md)
 - [Manual e roteiro de demonstração](documentos/manual.md)
 - [Resultados de testes](documentos/testes.csv)
+- [Auditoria de cliente e administração](documentos/auditoria-vora.md)
 - [Requisitos e casos de uso](documentos/requisitos.md)
 - [DER no Draw.io](documentos/loja_virtual.drawio) e [dicionário de dados](documentos/lojaVirtual_dicionario.xlsx)
 - [Criação do SQLite](back-end/src/database/sql/create.sql) e [dados do catálogo](back-end/src/database/sql/insert.sql)

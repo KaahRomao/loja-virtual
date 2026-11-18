@@ -8,9 +8,10 @@ async function login(req, res) {
       typeof email !== "string" ||
       typeof senha !== "string" ||
       !email.trim() ||
-      !senha
+      !senha ||
+      Buffer.byteLength(senha, "utf8") > 72
     ) {
-      return res.status(400).json({ erro: "email e senha são obrigatórios" });
+      return res.status(400).json({ erro: "Informe o e-mail e uma senha válida" });
     }
 
     const resultado = await authService.login({ email: email.trim(), senha });

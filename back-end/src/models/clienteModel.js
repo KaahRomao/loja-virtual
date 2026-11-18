@@ -2,8 +2,8 @@ const db = require("../database/connection");
 
 async function buscarPorEmail(email) {
   const resultado = await db.execute({
-    sql: "SELECT id, nome_cliente, email, senha, status FROM cliente WHERE email = ?",
-    args: [email],
+    sql: "SELECT id, nome_cliente, email, senha, status FROM cliente WHERE email = ? COLLATE NOCASE ORDER BY email = ? DESC, id LIMIT 1",
+    args: [email, email],
   });
   return resultado.rows[0];
 }

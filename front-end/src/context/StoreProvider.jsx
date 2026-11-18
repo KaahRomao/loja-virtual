@@ -1,10 +1,39 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { listarProdutos, readPreference, readSession, request, writePreference, writeSession } from "../services/api";
 import { StoreContext } from "./store-context";
 
-function sessaoInicial(tipo) {
-  const sessao = readSession(tipo);
-  return sessao?.expira > Date.now() ? sessao : null;
+const enderecoVazio = {
+  name: "", zip: "", street: "", number: "", complement: "",
+  neighborhood: "", city: "", uf: "", freight: null, deliveryDays: null,
+};
+
+function sessaoInicial() {
+  const atual = readSession("conta");
+  if (atual?.expira > Date.now() && ["cliente", "admin"].includes(atual.role)) return atual;
+  for (const role of ["cliente", "admin"]) {
+    const anterior = readSession(role);
+    if (anterior?.expira > Date.now()) return { ...anterior, role };
+  }
+  return null;
+}
+
+function gravarSessao(conta) {
+  writeSession("conta", conta);
+  writeSession("cliente", null);
+  writeSession("admin", null);
+}
+
+function normalizarCarrinho(carrinho, equivalentes) {
+  const resultado = {};
+  for (const [id, quantidade] of Object.entries(carrinho)) {
+    const principal = equivalentes.get(Number(id)) ?? id;
+    resultado[principal] = (resultado[principal] ?? 0) + quantidade;
+  }
+  return resultado;
+}
+
+function normalizarFavoritos(favoritos, equivalentes) {
+  return [...new Set(favoritos.map((id) => equivalentes.get(id) ?? id))];
 }
 
 export function StoreProvider({ children }) {
@@ -12,15 +41,11 @@ export function StoreProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [revision, setRevision] = useState(0);
-  const [cart, setCart] = useState(() => readPreference("carrinho") ?? {});
+  const [savedCart, setCart] = useState(() => readPreference("carrinho") ?? {});
   const [cartOpen, setCartOpen] = useState(false);
-  const [favorites, setFavorites] = useState(() => readPreference("favoritos") ?? []);
-  const [address, setAddress] = useState({
-    name: "", zip: "", street: "", number: "", complement: "",
-    neighborhood: "", city: "", uf: "", freight: null, deliveryDays: null,
-  });
-  const [client, setClient] = useState(() => sessaoInicial("cliente"));
-  const [admin, setAdmin] = useState(() => sessaoInicial("admin"));
+  const [savedFavorites, setFavorites] = useState(() => readPreference("favoritos") ?? []);
+  const [address, setAddress] = useState(enderecoVazio);
+  const [account, setAccount] = useState(sessaoInicial);
 
   function refreshProducts() {
     setLoading(true);
@@ -37,47 +62,48 @@ export function StoreProvider({ children }) {
     return () => controller.abort();
   }, [revision]);
 
-  useEffect(() => { writePreference("carrinho", cart); }, [cart]);
-  useEffect(() => { writePreference("favoritos", favorites); }, [favorites]);
+  useEffect(() => { writePreference("carrinho", savedCart); }, [savedCart]);
+  useEffect(() => { writePreference("favoritos", savedFavorites); }, [savedFavorites]);
   useEffect(() => {
-    const timers = [[client, setClient, "cliente"], [admin, setAdmin, "admin"]]
-      .filter(([sessao]) => sessao)
-      .map(([sessao, set, tipo]) => setTimeout(() => {
-        writeSession(tipo, null);
-        set(null);
-      }, Math.max(0, sessao.expira - Date.now())));
-    return () => timers.forEach(clearTimeout);
-  }, [client, admin]);
+    gravarSessao(account);
+    if (!account) return;
+    const timer = setTimeout(() => {
+      gravarSessao(null);
+      setAccount(null);
+    }, Math.max(0, account.expira - Date.now()));
+    return () => clearTimeout(timer);
+  }, [account]);
 
-  async function login(tipo, email, senha) {
-    const adminLogin = tipo === "admin";
-    const dados = await request(adminLogin ? "/admin/login" : "/login", {
+  async function login(email, senha) {
+    const dados = await request("/login", {
       method: "POST", body: { email, senha },
     });
-    const conta = adminLogin ? dados.admin : dados.cliente;
+    const role = dados.role ?? (dados.cliente ? "cliente" : null);
+    const conta = role === "admin" ? dados.admin : dados.cliente;
+    if (!conta || !dados.token || !["cliente", "admin"].includes(role)) {
+      throw new Error("O servidor devolveu uma sessão inválida.");
+    }
     const sessao = {
       ...conta,
+      role,
       name: conta.nome_cliente ?? conta.nome,
       token: dados.token,
       expira: Date.now() + 2 * 60 * 60 * 1000,
     };
-    writeSession(tipo, sessao);
-    (adminLogin ? setAdmin : setClient)(sessao);
+    gravarSessao(sessao);
+    setAccount(sessao);
+    return sessao;
   }
 
-  function logout(tipo, { preserveAddress = false } = {}) {
-    writeSession(tipo, null);
-    if (tipo === "admin") {
-      setAdmin(null);
-    } else {
-      setClient(null);
-      if (!preserveAddress) setAddress({
-        name: "", zip: "", street: "", number: "", complement: "",
-        neighborhood: "", city: "", uf: "", freight: null, deliveryDays: null,
-      });
-    }
-  }
+  const logout = useCallback(({ preserveAddress = false } = {}) => {
+    gravarSessao(null);
+    setAccount(null);
+    if (!preserveAddress) setAddress(enderecoVazio);
+  }, []);
 
+  const equivalentes = new Map(products.flatMap((product) => product.aliases.map((id) => [id, product.id])));
+  const cart = normalizarCarrinho(savedCart, equivalentes);
+  const favorites = normalizarFavoritos(savedFavorites, equivalentes);
   const cartItems = products
     .filter((p) => cart[p.id] > 0)
     .map((p) => ({ ...p, qty: cart[p.id] }));
@@ -88,11 +114,12 @@ export function StoreProvider({ children }) {
   const value = {
     products, loading, error, refreshProducts, categoryNames, categorySlugs: Object.keys(categoryNames),
     cart, cartItems, totalItems, total, cartOpen, setCartOpen, favorites,
-    address, setAddress, user: client, admin, login, logout,
+    address, setAddress, account, user: account?.role === "cliente" ? account : null,
+    admin: account?.role === "admin" ? account : null, login, logout,
     setQuantity: (id, delta) => {
       const stock = products.find((p) => p.id === id)?.stock ?? 0;
       setCart((prev) => {
-        const next = { ...prev };
+        const next = normalizarCarrinho(prev, equivalentes);
         const quantity = Math.max(0, (next[id] || 0) + delta);
         if (quantity === 0) delete next[id];
         else next[id] = delta > 0 ? Math.max(prev[id] || 0, Math.min(quantity, stock)) : quantity;
@@ -100,7 +127,7 @@ export function StoreProvider({ children }) {
       });
     },
     removeItem: (id) => setCart((prev) => {
-      const next = { ...prev };
+      const next = normalizarCarrinho(prev, equivalentes);
       delete next[id];
       return next;
     }),
@@ -108,9 +135,10 @@ export function StoreProvider({ children }) {
       writePreference("carrinho", {});
       setCart({});
     },
-    toggleFavorite: (id) => setFavorites((f) =>
-      f.includes(id) ? f.filter((x) => x !== id) : [...f, id]
-    ),
+    toggleFavorite: (id) => setFavorites((saved) => {
+      const ids = normalizarFavoritos(saved, equivalentes);
+      return ids.includes(id) ? ids.filter((other) => other !== id) : [...ids, id];
+    }),
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

@@ -9,8 +9,8 @@ import { useStore } from "../hooks/useStore";
 export default function StoreLayout() {
   const { loading, error, refreshProducts } = useStore();
   const { pathname } = useLocation();
-  const precisaCatalogo = !["/entrar", "/cadastro", "/checkout/confirmacao"].includes(pathname) &&
-    !pathname.startsWith("/pedido/");
+  const precisaCatalogo = ["/", "/catalogo", "/favoritos", "/carrinho", "/checkout/endereco", "/checkout/pagamento"].includes(pathname) ||
+    pathname.startsWith("/categoria/") || pathname.startsWith("/produto/");
 
   return (
     <div className="overflow-clip">

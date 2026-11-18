@@ -8,12 +8,13 @@ Base local `http://localhost:3000`. Envie `Content-Type: application/json` em re
 | --- | --- | --- |
 | GET `/` | Sem corpo | 200 · `{"mensagem":"API da VORA no ar"}` |
 | GET `/health` | Sem corpo | 200 · `{"status":"ok"}` se o SQLite estiver legível, ou 503 |
-| GET `/produtos?categoria=1&busca=Banana` | Ambos os filtros são opcionais | 200 · `[{"id":1,"nome_produto":"Banana Prata 1kg","preco":699,"estoque":80}]` |
-| GET `/produtos/1` | ID na rota | 200 · `{"id":1,"nome_produto":"Banana Prata 1kg","preco":699}` |
+| GET `/produtos?categoria=1&busca=Banana` | Ambos os filtros são opcionais | 200 · `[{"id":1,"nome_produto":"Banana Prata 1kg","preco":599,"preco_anterior":699,"estoque":80,"ids_equivalentes":[]}]` |
+| GET `/produtos/1` | ID na rota | 200 · `{"id":1,"nome_produto":"Banana Prata 1kg","preco":599,"preco_anterior":699}` |
 | POST `/clientes` | `{"nome_cliente":"Cliente Teste","email":"cliente@example.com","senha":"senha-de-exemplo"}` | 201 · `{"id":1,"nome_cliente":"Cliente Teste","email":"cliente@example.com"}` |
-| POST `/login` | `{"email":"cliente@example.com","senha":"senha-de-exemplo"}` | 200 · `{"token":"<JWT>","cliente":{"id":1,"nome_cliente":"Cliente Teste"}}` |
+| POST `/login` | E-mail e senha da conta | 200 · `{"token":"<JWT>","role":"cliente","cliente":{"id":1,"nome_cliente":"Cliente Teste"}}` ou `{"token":"<JWT>","role":"admin","admin":{"id":1,"nome":"Admin Vora"}}` |
 | GET `/cep/01001000` | CEP na rota | 200 · `{"cep":"01001-000","logradouro":"Praça da Sé","bairro":"Sé","cidade":"São Paulo","uf":"SP","valor_frete":1500,"prazo_entrega":3}` |
-| POST `/pedidos` | Token de cliente e corpo do exemplo abaixo | 201 · `{"id":1,"situacao":"Pendente","valor_total":2199,"itens":[{"id_produto":1,"quantidade":1,"valor_unitario":699}]}` |
+| POST `/pedidos` | Token de cliente e corpo do exemplo abaixo | 201 · `{"id":1,"situacao":"Pendente","valor_total":2099,"itens":[{"id_produto":1,"quantidade":1,"valor_unitario":599}]}` |
+| GET `/pedidos` | Token de cliente | 200 · `[{"id":1,"situacao":"Pendente","valor_total":2099,"data_criado":"2026-11-18 12:00:00"}]` |
 | GET `/pedidos/1` | Token do dono | 200 · `{"id":1,"situacao":"Pago","valor_total":2199,"pagamentos":[{"id_transacao_externa":"123456","situacao":"Aprovado"}]}` |
 | POST `/pedidos/1/pagamento` | Token do dono do pedido pendente | 200 · `{"id":"<preferência>","link":"<url checkout>","retorno_configurado":false}` |
 | POST `/pagamentos/sincronizar` | Token do dono e `{"pedido_id":1}`. O `payment_id` pode ser enviado junto quando disponível | 200 · `{"processado":true}` |
@@ -30,9 +31,11 @@ Base local `http://localhost:3000`. Envie `Content-Type: application/json` em re
 
 Reenvie a mesma `chave_checkout` quando repetir o mesmo envio após falha de conexão. Usar a mesma chave com itens ou endereço diferentes retorna 409. Gere uma nova chave para um novo pedido.
 
+A listagem do catálogo apresenta uma ficha para registros equivalentes. O campo `ids_equivalentes` contém os IDs anteriores que podem estar em carrinhos ou favoritos. O histórico mantém o ID e o valor unitário gravados na compra.
+
 ## Administração
 
-Todas as rotas abaixo, exceto o login, exigem o token administrativo.
+O formulário da loja usa `POST /login` para clientes e administradores. As rotas de gestão exigem token com papel administrativo. O login específico permanece disponível para clientes de API anteriores.
 
 | Método e rota | Envio | Exemplo de resposta |
 | --- | --- | --- |

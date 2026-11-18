@@ -71,6 +71,6 @@ function Detail({ product }) {
 export default function ProductDetail() {
   const { products } = useStore();
   const { id } = useParams();
-  const product = products.find((item) => item.id === Number(id));
+  const product = products.find((item) => item.id === Number(id) || item.aliases.includes(Number(id)));
   return product ? <Detail key={product.id} product={product} /> : <NotFound />;
 }

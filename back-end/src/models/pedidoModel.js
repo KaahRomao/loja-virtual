@@ -103,6 +103,16 @@ async function buscarPedido(id, idCliente, executor = db) {
   return { ...pedido, itens, pagamentos: await listarDoPedido(id, executor) };
 }
 
+async function listarPedidos(idCliente) {
+  const { rows } = await db.execute({
+    sql: `SELECT p.id, p.valor_total, p.data_criado, s.nome_situacao AS situacao
+          FROM pedido p JOIN situacao s ON s.id = p.id_situacao
+          WHERE p.id_cliente = ? ORDER BY p.id DESC`,
+    args: [idCliente],
+  });
+  return rows;
+}
+
 async function referenciaPagamento(id) {
   const { rows } = await db.execute({
     sql: `UPDATE pedido SET referencia_pagamento = COALESCE(referencia_pagamento, ?)
@@ -133,4 +143,4 @@ async function salvarPreferencia(id, preferencia) {
   return buscarPreferencia(id);
 }
 
-module.exports = { buscarReenvio, gravar, buscarPedido, referenciaPagamento, buscarPreferencia, salvarPreferencia };
+module.exports = { buscarReenvio, gravar, buscarPedido, listarPedidos, referenciaPagamento, buscarPreferencia, salvarPreferencia };

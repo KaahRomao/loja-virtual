@@ -2,56 +2,9 @@ import { useEffect, useState } from "react";
 import { LayoutDashboard, Package, ClipboardList, Grid2x2, Store, LogOut } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useStore } from "../hooks/useStore";
-import { logoImage } from "../assets";
 import { adaptarProduto, request, slugify } from "../services/api";
 import Button from "../components/ui/Button";
-import { cx, crumbLink, eyebrow, formError, formInput, formLabel } from "../components/ui/styles";
-
-function AdminLogin() {
-  const { login } = useStore();
-  const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function submit(e) {
-    e.preventDefault();
-    setError("");
-    setBusy(true);
-    try {
-      await login("admin", email, senha);
-    } catch (erro) {
-      setError(erro.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="grid min-h-screen place-items-center bg-deep p-5">
-      <form
-        className="grid w-[min(440px,100%)] gap-3.5 rounded-[22px] border border-border bg-card p-[30px] shadow-card"
-        noValidate
-        onSubmit={submit}
-      >
-        <img className="mx-auto mb-1" src={logoImage} width="150" height="47" alt="VORA" />
-        <span className={eyebrow}>ÁREA RESTRITA</span>
-        <h1 className="font-display text-[28px] font-bold leading-[normal] text-deep">Entrar como administrador</h1>
-        <label className={formLabel}>
-          E-mail
-          <input className={formInput} type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
-        </label>
-        <label className={formLabel}>
-          Senha
-          <input className={formInput} type="password" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} />
-        </label>
-        {error && <p className="mt-1.5 text-[13px] font-bold text-destructive">{error}</p>}
-        <Button type="submit" size="lg" disabled={busy}>{busy ? "Entrando…" : "Entrar no painel"}</Button>
-        <Link className={crumbLink} to="/">← Voltar para a loja</Link>
-      </form>
-    </div>
-  );
-}
+import { cx, formError } from "../components/ui/styles";
 
 const links = [
   { to: "/admin", label: "Painel", icon: LayoutDashboard },
@@ -64,7 +17,7 @@ const navLink = "flex w-full cursor-pointer items-center gap-2.5 rounded-[10px] 
 
 export default function AdminLayout() {
   const { admin } = useStore();
-  return admin ? <AdminArea key={admin.token} admin={admin} /> : <AdminLogin />;
+  return <AdminArea key={admin.token} admin={admin} />;
 }
 
 function AdminArea({ admin }) {
@@ -84,16 +37,18 @@ function AdminArea({ admin }) {
         setData({ rows: produtos.map(adaptarProduto), categories, orders });
       })
       .catch((erro) => {
-        if (!controller.signal.aborted) setError(erro.message);
+        if (controller.signal.aborted) return;
+        if (erro.status === 401) logout();
+        else setError(erro.message);
       });
     return () => controller.abort();
-  }, [token, revision, pathname]);
+  }, [token, revision, pathname, logout]);
 
   async function mutate(path, method, body) {
     try {
       return await request(`/admin/${path}`, { token, method, body });
     } catch (erro) {
-      if (erro.status === 401) logout("admin");
+      if (erro.status === 401) logout();
       throw erro;
     }
   }
@@ -126,9 +81,8 @@ function AdminArea({ admin }) {
   const isActive = (to) => (to === "/admin" ? pathname === "/admin" : pathname.startsWith(to));
 
   return (
-    <div className="grid min-h-screen grid-cols-[240px_1fr] bg-muted tablet:grid-cols-[1fr]">
-      <aside className="sticky top-0 flex h-screen flex-col gap-3.5 bg-deep px-4 py-[22px] text-primary-foreground tablet:static tablet:h-auto tablet:flex-row tablet:flex-wrap tablet:items-center">
-        <img className="rounded-[12px] bg-card px-2.5 py-1.5" width="140" height="44" alt="VORA" src={logoImage} />
+    <div className="grid min-h-[600px] grid-cols-[240px_1fr] bg-muted tablet:grid-cols-[1fr]">
+      <aside className="flex flex-col gap-3.5 bg-deep px-4 py-[22px] text-primary-foreground tablet:static tablet:h-auto tablet:flex-row tablet:flex-wrap tablet:items-center">
         <span className="self-start rounded-[20px] border border-white/30 px-3 py-[7px] text-[11px] text-primary-foreground">
           {admin.name}
         </span>
@@ -136,6 +90,7 @@ function AdminArea({ admin }) {
           {links.map(({ to, label, icon: Icon }) => (
             <Link
               key={to}
+              aria-current={isActive(to) ? "page" : undefined}
               className={cx(navLink, isActive(to) ? "bg-primary opacity-100" : "opacity-80 hover:bg-white/8 hover:opacity-100")}
               to={to}
             >
@@ -151,13 +106,13 @@ function AdminArea({ admin }) {
           <button
             type="button"
             className={cx(navLink, "opacity-80 hover:bg-white/8 hover:opacity-100")}
-            onClick={() => logout("admin")}
+            onClick={() => logout()}
           >
             <LogOut size={18} />Sair
           </button>
         </div>
       </aside>
-      <main className="min-w-0 px-[clamp(16px,3vw,40px)] pt-8 pb-[60px]">
+      <div className="min-w-0 px-[clamp(16px,3vw,40px)] pt-8 pb-[60px]">
         <section>
           {error ? (
             <div className="grid justify-items-start gap-3">
@@ -168,7 +123,7 @@ function AdminArea({ admin }) {
             <Outlet context={{ ...data, categoryNames, saveProduct, saveCategory, setOrderStatus }} />
           ) : <p role="status">Carregando painel…</p>}
         </section>
-      </main>
+      </div>
     </div>
   );
 }

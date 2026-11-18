@@ -66,6 +66,3 @@ INSERT INTO produto (id, nome_produto, descricao, img_url, preco, estoque, id_ca
   (14, 'Iogurte Natural 170g', 'Iogurte natural integral, pote de 170g.', '/img/produtos/iogurte-natural.jpg', 349, 130, 4, 1),
   (15, 'Pão Francês 500g', 'Pão francês assado no dia, 500g.', '/img/produtos/pao-frances.jpg', 1090, 50, 5, 1),
   (16, 'Pão de Forma Tradicional 500g', 'Pão de forma tradicional, pacote de 500g.', '/img/produtos/pao-de-forma.jpg', 799, 85, 5, 1);
-
--- Preços anteriores de demonstração para o filtro de ofertas.
-UPDATE produto SET preco_anterior = preco + 150 WHERE id IN (1, 5, 9, 12);

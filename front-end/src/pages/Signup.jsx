@@ -29,8 +29,8 @@ export default function Signup() {
         method: "POST", body: { nome_cliente: form.name, email: form.email, senha: form.password, telefone: form.phone.trim() || undefined },
       });
       try {
-        await login("cliente", form.email, form.password);
-        navigate(checkoutDestination(state) ?? "/", { replace: true });
+        await login(form.email, form.password);
+        navigate(checkoutDestination(state) ?? "/conta", { replace: true });
       } catch {
         navigate("/entrar", { state, replace: true });
       }

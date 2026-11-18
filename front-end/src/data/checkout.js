@@ -4,3 +4,10 @@ export function checkoutDestination(state) {
     ? path
     : null;
 }
+
+export function loginDestination(state) {
+  const path = state?.returnTo;
+  const allowed = typeof path === "string" &&
+    /^\/(?:admin(?:\/(?:produtos(?:\/\d+)?|pedidos|categorias))?|conta(?:\/pedidos)?)$/.test(path);
+  return allowed ? path : checkoutDestination(state);
+}

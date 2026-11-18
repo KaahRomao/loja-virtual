@@ -13,6 +13,9 @@ import CheckoutPayment from "./pages/CheckoutPayment";
 import CheckoutConfirmation from "./pages/CheckoutConfirmation";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Account from "./pages/Account";
+import Orders from "./pages/Orders";
+import Favorites from "./pages/Favorites";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
@@ -28,6 +31,9 @@ const pageMetadata = {
   "/checkout/confirmacao": ["Acompanhar pedido", "Consulte a situação do seu pedido na Vora."],
   "/entrar": ["Entrar", "Acesse sua conta na Vora Supermarket."],
   "/cadastro": ["Criar conta", "Cadastre-se para fazer sua compra na Vora."],
+  "/conta": ["Minha conta", "Acesse os dados da sua conta na Vora."],
+  "/conta/pedidos": ["Meus pedidos", "Acompanhe suas compras na Vora."],
+  "/favoritos": ["Favoritos", "Reveja os produtos que você salvou."],
 };
 
 function PageMetadata() {
@@ -61,11 +67,12 @@ function ScrollToTop() {
   return null;
 }
 
-function RequireCustomer() {
-  const { user } = useStore();
+function RequireAccount({ role }) {
+  const { account } = useStore();
   const { pathname, search } = useLocation();
-  if (user) return <Outlet />;
-  return <Navigate to="/entrar" replace state={{ returnTo: pathname + search }} />;
+  if (!account) return <Navigate to="/entrar" replace state={{ returnTo: pathname + search }} />;
+  if (role && account.role !== role) return <NotFound restricted />;
+  return <Outlet />;
 }
 
 // /categoria/:slug — só aceita categorias que existem
@@ -98,7 +105,12 @@ export default function App() {
           <Route path="categoria/:slug" element={<CategoryPage />} />
           <Route path="produto/:id" element={<ProductDetail />} />
           <Route path="carrinho" element={<Cart />} />
-          <Route element={<RequireCustomer />}>
+          <Route path="favoritos" element={<Favorites />} />
+          <Route element={<RequireAccount />}>
+            <Route path="conta" element={<Account />} />
+          </Route>
+          <Route element={<RequireAccount role="cliente" />}>
+            <Route path="conta/pedidos" element={<Orders />} />
             <Route path="checkout/endereco" element={<CheckoutAddress />} />
             <Route path="checkout/pagamento" element={<CheckoutPayment />} />
             <Route path="checkout/confirmacao" element={<CheckoutConfirmation />} />
@@ -106,16 +118,17 @@ export default function App() {
           </Route>
           <Route path="entrar" element={<Login />} />
           <Route path="cadastro" element={<Signup />} />
-          <Route path="*" element={<NotFound />} />
-        </Route>
 
-        {/* Painel do administrador */}
-        <Route path="admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="produtos" element={<AdminProducts />} />
-          <Route path="produtos/:id" element={<AdminProductPage />} />
-          <Route path="pedidos" element={<AdminOrders />} />
-          <Route path="categorias" element={<AdminCategories />} />
+          <Route element={<RequireAccount role="admin" />}>
+            <Route path="admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="produtos" element={<AdminProducts />} />
+              <Route path="produtos/:id" element={<AdminProductPage />} />
+              <Route path="pedidos" element={<AdminOrders />} />
+              <Route path="categorias" element={<AdminCategories />} />
+              <Route path="*" element={<NotFound />} />
+            </Route>
+          </Route>
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

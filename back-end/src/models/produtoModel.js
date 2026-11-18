@@ -18,7 +18,16 @@ async function listar({ categoria, busca }) {
     args.push(`%${busca}%`);
   }
   const { rows } = await db.execute({ sql: sql + " ORDER BY p.id", args });
-  return rows;
+  const unicos = new Map();
+  for (const produto of rows) {
+    const chave = JSON.stringify([
+      produto.id_categoria, produto.nome_produto, produto.descricao, produto.unidade, produto.img_url,
+    ]);
+    const principal = unicos.get(chave);
+    if (principal) principal.ids_equivalentes.push(produto.id);
+    else unicos.set(chave, { ...produto, ids_equivalentes: [] });
+  }
+  return [...unicos.values()];
 }
 
 async function buscarPorId(id) {

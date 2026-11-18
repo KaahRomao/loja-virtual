@@ -77,7 +77,7 @@ function validarProduto(b, parcial) {
 
 const login = tratar(async (req, res) => {
   const { email, senha } = req.body ?? {};
-  if (!texto(email) || !texto(senha)) {
+  if (!texto(email) || !texto(senha) || Buffer.byteLength(senha, "utf8") > 72) {
     return res.status(400).json({ erro: "email e senha são obrigatórios" });
   }
   res
