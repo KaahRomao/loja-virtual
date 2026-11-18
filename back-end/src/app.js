@@ -29,7 +29,7 @@ app.get("/health", async (req, res) => {
     await db.execute("SELECT id FROM produto LIMIT 1");
     return res.json({ status: "ok" });
   } catch (erro) {
-    console.error("Falha na verificação do SQLite:", erro.code ?? erro.message);
+    console.error("Falha na verificação do SQLite:", codigoParaLog(erro));
     return res.status(503).json({ status: "indisponivel" });
   }
 });
@@ -47,11 +47,16 @@ app.use("/admin", adminRoutes);
 
 app.use((req, res) => res.status(404).json({ erro: "Rota não encontrada" }));
 
+function codigoParaLog(erro) {
+  const codigo = erro.code ?? erro.name;
+  return typeof codigo === "string" && /^[a-zA-Z0-9_]{1,50}$/.test(codigo) ? codigo : "Error";
+}
+
 app.use((erro, req, res, next) => {
   if (res.headersSent) return next(erro);
   if (erro.type === "entity.parse.failed") return res.status(400).json({ erro: "JSON inválido" });
   if (erro.type === "entity.too.large") return res.status(413).json({ erro: "Corpo da requisição muito grande" });
-  console.error(erro);
+  console.error("Erro interno da API:", req.method, req.route?.path ?? "(sem rota)", codigoParaLog(erro));
   return res.status(500).json({ erro: "Erro interno do servidor" });
 });
 

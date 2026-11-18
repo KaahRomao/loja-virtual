@@ -14,14 +14,13 @@ const STATUS_POR_CODIGO = {
 };
 
 function tratar(fn) {
-  return async (req, res) => {
+  return async (req, res, next) => {
     try {
       await fn(req, res);
     } catch (erro) {
       const status = STATUS_POR_CODIGO[erro.codigo];
       if (status) return res.status(status).json({ erro: erro.message });
-      console.error(erro);
-      res.status(500).json({ erro: "Erro interno do servidor" });
+      return next(erro);
     }
   };
 }

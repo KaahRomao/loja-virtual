@@ -6,6 +6,7 @@ const { join } = require("node:path");
 const { once } = require("node:events");
 const { DatabaseSync } = require("node:sqlite");
 const { createHmac, randomUUID } = require("node:crypto");
+const { inspect } = require("node:util");
 const bcrypt = require("bcryptjs");
 const { Payment, Preference } = require("mercadopago");
 
@@ -238,4 +239,17 @@ test("API local com SQLite e respostas de teste das integrações", async (t) =>
   assert.equal(persisted.prepare("SELECT count(*) AS n FROM pagamento").get().n, 4);
   assert.equal(persisted.prepare("PRAGMA quick_check").get().quick_check, "ok");
   persisted.close();
+
+  await t.test("erros internos preservam o código sem divulgar detalhes", async (caso) => {
+    const sentinela = "detalhe-sintetico-da-integracao";
+    const erros = [];
+    caso.mock.method(console, "error", (...args) => erros.push(inspect(args)));
+    const produtoService = require("../src/services/produtoService");
+    caso.mock.method(produtoService, "listarProdutos", async () => {
+      throw Object.assign(new Error(sentinela), { code: "FALHA_TESTE", cause: { token: sentinela } });
+    });
+    assert.deepEqual(await chamar("/produtos", 500), { erro: "Erro interno do servidor" });
+    assert.match(erros.join("\n"), /FALHA_TESTE/);
+    assert.ok(erros.every((linha) => !linha.includes(sentinela)));
+  });
 });
