@@ -10,8 +10,14 @@ async function listar({ categoria, busca }) {
   let sql = SELECT;
   const args = [];
   if (categoria) {
-    sql += " AND (p.id_categoria = ? OR c.id_categoria_pai = ?)";
-    args.push(categoria, categoria);
+    sql = `WITH RECURSIVE descendentes(id) AS (
+      SELECT id FROM categoria WHERE id = ? AND status = 1
+      UNION
+      SELECT filha.id FROM categoria filha
+        JOIN descendentes pai ON filha.id_categoria_pai = pai.id
+        WHERE filha.status = 1
+    ) ` + sql + " AND p.id_categoria IN (SELECT id FROM descendentes)";
+    args.push(categoria);
   }
   if (busca) {
     sql += " AND p.nome_produto LIKE ?";

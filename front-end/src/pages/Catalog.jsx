@@ -9,7 +9,7 @@ import { cx, formInput, pillLink, sectionTitle } from "../components/ui/styles";
 const normalize = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 export default function Catalog({ category }) {
-  const { categoryNames, products, categorySlugs } = useStore();
+  const { categoryNames, products, categorySlugs, categoryMembers } = useStore();
   const { pathname } = useLocation();
   const [params] = useSearchParams();
   const offers = params.get("ofertas") === "true";
@@ -19,7 +19,7 @@ export default function Catalog({ category }) {
 
   let list = products.filter(
     (p) =>
-      (!category || p.category === category) &&
+      (!category || categoryMembers.get(category)?.has(p.categoryId)) &&
       (!offers || (discountPercent(p) > 0 && p.stock > 0)) &&
       (maxPrice === "" || p.price <= Number(maxPrice)) &&
       (!q || normalize(p.name).includes(normalize(q))),
@@ -46,7 +46,7 @@ export default function Catalog({ category }) {
     ...categorySlugs.map((slug) => ({
       to: `/categoria/${slug}`,
       label: categoryNames[slug],
-      count: products.filter((p) => p.category === slug).length,
+      count: products.filter((p) => categoryMembers.get(slug)?.has(p.categoryId)).length,
       active: category === slug,
     })),
     {
@@ -131,11 +131,11 @@ export default function Catalog({ category }) {
             <div className="px-[15px] py-[70px] text-center text-muted-foreground">
               <Search size={36} className="mx-auto text-primary" />
               <h2 className="mt-[15px] font-display text-[24px] font-medium leading-[normal] text-deep">
-                {offers && !q && !maxPrice ? "Nenhuma oferta ativa no momento." : "Não achamos isso por aqui."}
+                {offers && !q && !maxPrice ? "Nenhuma oferta ativa no momento." :
+                  category && !q && !maxPrice ? "Ainda não há produtos nesta categoria." : "Não achamos isso por aqui."}
               </h2>
               <p className="mt-2 mb-6">
-                Confira se o nome está certinho ou experimente uma destas
-                categorias:
+                Explore outras categorias ou veja todos os produtos.
               </p>
               <div className="mb-3.5 flex flex-wrap justify-center gap-2">
                 {categorySlugs.map((slug) => (

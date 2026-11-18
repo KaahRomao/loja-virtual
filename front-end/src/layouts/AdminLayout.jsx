@@ -81,7 +81,7 @@ function AdminArea({ admin }) {
   const isActive = (to) => (to === "/admin" ? pathname === "/admin" : pathname.startsWith(to));
 
   return (
-    <div className="grid min-h-[600px] grid-cols-[240px_1fr] bg-muted tablet:grid-cols-[1fr]">
+    <div className="grid min-h-[600px] grid-cols-[240px_minmax(0,1fr)] bg-muted tablet:grid-cols-[minmax(0,1fr)]">
       <aside className="flex flex-col gap-3.5 bg-deep px-4 py-[22px] text-primary-foreground tablet:static tablet:h-auto tablet:flex-row tablet:flex-wrap tablet:items-center">
         <span className="self-start rounded-[20px] border border-white/30 px-3 py-[7px] text-[11px] text-primary-foreground">
           {admin.name}

@@ -14,8 +14,8 @@ const modalLabel = "grid gap-[7px] text-[13px] font-extrabold";
 const modalInput = "rounded-[5px] border border-border px-3 py-[11px] outline-ring";
 const statValue = "block font-display text-[23px] font-[550] leading-[normal]";
 const statLabel = "block text-[12px] text-muted-foreground";
-const rowCols =
-  "grid grid-cols-[minmax(0,2.2fr)_1fr_1fr_.8fr_1.1fr_100px] items-center gap-3.5 px-[23px] py-[11px] tablet:grid-cols-[1fr_auto] tablet:[&>:nth-child(2)]:hidden tablet:[&>:nth-child(4)]:hidden";
+const rowCols = "admin-product-row items-center gap-3.5 px-5 py-3";
+const fieldLabel = "admin-product-label text-[11px] font-bold text-muted-foreground";
 
 // Janelinha de edição rápida (nome, preços e estoque)
 function QuickEdit({ row, onClose, onSave }) {
@@ -51,7 +51,7 @@ function QuickEdit({ row, onClose, onSave }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[oklch(16%_.02_175/.52)] p-5" onClick={onClose}>
       <div
-        className="relative w-[min(430px,100%)] rounded-[8px] bg-card p-[26px] shadow-[0_20px_70px_oklch(18%_.02_175/.25)]"
+        className="relative max-h-[calc(100dvh-2.5rem)] w-[min(470px,100%)] overflow-y-auto rounded-[8px] bg-card p-[26px] shadow-[0_20px_70px_oklch(18%_.02_175/.25)]"
         role="dialog"
         aria-modal="true"
         aria-label="Editar produto"
@@ -137,35 +137,40 @@ export default function AdminProducts() {
               <option value="ofertas">Em oferta</option>
             </select>
           </div>
-          <div className={cx(rowCols, adminTableHead, "tablet:hidden")}>
-            <span>Produto</span><span>Categoria</span><span>Preço</span><span>Estoque</span><span>Situação</span><span>Ações</span>
-          </div>
-          {list.map((r) => {
-            const st = stockStatus(r.stock);
-            return (
-              <div className={cx(rowCols, "border-t border-border text-[13px]", !r.active && "opacity-55")} key={r.id}>
-                <div className="flex min-w-0 items-center gap-[11px]">
-                  <span className="block size-11 flex-none overflow-hidden rounded-[5px]"><ProductPhoto product={r} /></span>
+          <div className="admin-product-list">
+            <div className={cx(rowCols, adminTableHead, "admin-product-head")}>
+              <span>Produto</span><span>Categoria</span><span>Preço</span><span>Estoque</span><span>Situação</span><span>Ações</span>
+            </div>
+            {list.map((r) => {
+              const st = stockStatus(r.stock);
+              return (
+                <div className={cx(rowCols, "min-w-0 border-t border-border text-[13px]", !r.active && "opacity-55")} key={r.id}>
+                  <div className="admin-product-name flex min-w-0 items-center gap-[11px]">
+                    <span className="block size-11 flex-none overflow-hidden rounded-[5px]"><ProductPhoto product={r} /></span>
+                    <span className="min-w-0 wrap-break-word">
+                      <b className="block">{r.name}</b>
+                      <small className="block text-[12px] text-muted-foreground">#{String(r.id).padStart(3, "0")}{r.unit && (" · " + r.unit)}</small>
+                    </span>
+                  </div>
+                  <span className="wrap-break-word text-[12px] text-muted-foreground">
+                    <span className={fieldLabel}>Categoria</span>{categoryNames[r.category]}
+                  </span>
                   <span>
-                    <b className="block">{r.name}</b>
-                    <small className="block text-[12px] text-muted-foreground">#{String(r.id).padStart(3, "0")} · {r.unit}</small>
+                    <span className={fieldLabel}>Preço</span>
+                    {r.oldPrice && <small className="block text-[12px] leading-[1.3] text-muted-foreground line-through">{formatPrice(r.oldPrice)}</small>}
+                    <b>{formatPrice(r.price)}</b>
+                  </span>
+                  <span><span className={fieldLabel}>Estoque</span>{r.stock} un.</span>
+                  <span className={cx(statusPill, stockTone[st])}>{stockLabels[st]}</span>
+                  <span className="admin-product-actions flex flex-wrap items-center gap-2.5">
+                    <Button variant="outline" size="sm" onClick={() => setEditing(r)}><Pencil size={16} /> Rápido</Button>
+                    <Link className={crumbLink} to={`/admin/produtos/${r.id}`}>Ficha</Link>
                   </span>
                 </div>
-                <span className="text-[12px] text-muted-foreground">{categoryNames[r.category]}</span>
-                <span>
-                  {r.oldPrice && <small className="block text-[12px] leading-[1.3] text-muted-foreground line-through">{formatPrice(r.oldPrice)}</small>}
-                  <b>{formatPrice(r.price)}</b>
-                </span>
-                <span>{r.stock} un.</span>
-                <span className={cx(statusPill, stockTone[st])}>{stockLabels[st]}</span>
-                <span className="flex items-center gap-2.5">
-                  <Button variant="outline" size="sm" onClick={() => setEditing(r)}><Pencil size={16} /> Rápido</Button>
-                  <Link className={crumbLink} to={`/admin/produtos/${r.id}`}>Ficha</Link>
-                </span>
-              </div>
-            );
-          })}
-          {!list.length && <p className="p-[30px] text-center text-muted-foreground">Nenhum produto encontrado.</p>}
+              );
+            })}
+            {!list.length && <p className="p-[30px] text-center text-muted-foreground">Nenhum produto encontrado.</p>}
+          </div>
         </div>
       </div>
       {editing && (

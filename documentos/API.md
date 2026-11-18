@@ -10,6 +10,7 @@ Base local `http://localhost:3000`. Envie `Content-Type: application/json` em re
 | GET `/health` | Sem corpo | 200 · `{"status":"ok"}` se o SQLite estiver legível, ou 503 |
 | GET `/produtos?categoria=1&busca=Banana` | Ambos os filtros são opcionais | 200 · `[{"id":1,"nome_produto":"Banana Prata 1kg","preco":599,"preco_anterior":699,"estoque":80,"ids_equivalentes":[]}]` |
 | GET `/produtos/1` | ID na rota | 200 · `{"id":1,"nome_produto":"Banana Prata 1kg","preco":599,"preco_anterior":699}` |
+| GET `/categorias` | Sem token | 200 · categorias ativas, inclusive as que ainda não têm produtos |
 | POST `/clientes` | `{"nome_cliente":"Cliente Teste","email":"cliente@example.com","senha":"senha-de-exemplo"}` | 201 · `{"id":1,"nome_cliente":"Cliente Teste","email":"cliente@example.com"}` |
 | POST `/login` | E-mail e senha da conta | 200 · `{"token":"<JWT>","role":"cliente","cliente":{"id":1,"nome_cliente":"Cliente Teste"}}` ou `{"token":"<JWT>","role":"admin","admin":{"id":1,"nome":"Admin Vora"}}` |
 | GET `/cep/01001000` | CEP na rota | 200 · `{"cep":"01001-000","logradouro":"Praça da Sé","bairro":"Sé","cidade":"São Paulo","uf":"SP","valor_frete":1500,"prazo_entrega":3}` |

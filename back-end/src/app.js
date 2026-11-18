@@ -7,6 +7,7 @@ const cors = require("cors");
 const cepRoutes = require("./routes/cepRoutes");
 const pagamentoRoutes = require("./routes/pagamentoRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const categoriaModel = require("./models/categoriaModel");
 const db = require("./database/connection");
 const app = express();
 
@@ -34,6 +35,9 @@ app.get("/health", async (req, res) => {
 });
 
 app.use("/produtos", produtoRoutes);
+app.get("/categorias", async (req, res) => {
+  res.set("Cache-Control", "no-cache").json(await categoriaModel.listar(true));
+});
 app.use("/clientes", clienteRoutes);
 app.use("/login", authRoutes);
 app.use("/pedidos", pedidoRoutes);

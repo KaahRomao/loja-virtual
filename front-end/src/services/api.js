@@ -90,6 +90,17 @@ export async function listarProdutos(signal) {
   return lista.map(adaptarProduto);
 }
 
+export async function listarCategorias(signal) {
+  const categorias = await request("/categorias", { signal });
+  const slugs = new Set();
+  return categorias.map(({ id, nome_categoria: name, id_categoria_pai: parentId }) => {
+    let slug = slugify(name) || "categoria-" + id;
+    while (slugs.has(slug)) slug += "-" + id;
+    slugs.add(slug);
+    return { id, name, parentId, slug };
+  });
+}
+
 export function consultarCep(cep) {
   return request(`/cep/${cep.replace(/\D/g, "")}`);
 }

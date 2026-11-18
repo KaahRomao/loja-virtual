@@ -102,6 +102,13 @@ test("API local com SQLite e respostas de teste das integrações", async (t) =>
 
   const catalogo = await chamar("/produtos", 200);
   assert.equal(catalogo.length, 16);
+  const categoriaVazia = await post("/admin/categorias", 201, { nome_categoria: "Categoria sem produtos" }, admin.token);
+  assert.ok((await chamar("/categorias", 200)).some((categoria) => categoria.id === categoriaVazia.id));
+  assert.deepEqual(await chamar(`/produtos?categoria=${categoriaVazia.id}`, 200), []);
+  await chamar(`/admin/categorias/${categoriaVazia.id}`, 200, {
+    method: "PUT", body: { status: 0 }, token: admin.token,
+  });
+  assert.ok(!(await chamar("/categorias", 200)).some((categoria) => categoria.id === categoriaVazia.id));
   const [banana] = await chamar("/produtos?busca=Banana", 200);
   assert.equal(banana.nome_produto, "Banana Prata 1kg");
   assert.equal(banana.preco, 599);

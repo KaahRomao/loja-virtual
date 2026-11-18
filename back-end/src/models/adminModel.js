@@ -1,4 +1,5 @@
 const db = require("../database/connection");
+const { listar: listarCategorias } = require("./categoriaModel");
 const { listarDoPedido } = require("./pagamentoModel");
 
 const CAMPOS_PRODUTO = [
@@ -91,13 +92,6 @@ async function atualizarProduto(id, campos, situacao) {
 }
 
 // ---------- categorias ----------
-async function listarCategorias() {
-  const r = await db.execute(
-    "SELECT id, nome_categoria, id_categoria_pai, status FROM categoria ORDER BY id",
-  );
-  return r.rows;
-}
-
 async function buscarCategoria(id) {
   const r = await db.execute({
     sql: "SELECT id, nome_categoria, id_categoria_pai, status FROM categoria WHERE id = ?",

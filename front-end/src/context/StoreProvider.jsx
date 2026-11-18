@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { listarProdutos, readPreference, readSession, request, writePreference, writeSession } from "../services/api";
+import { listarCategorias, listarProdutos, readPreference, readSession, request, writePreference, writeSession } from "../services/api";
 import { StoreContext } from "./store-context";
 
 const enderecoVazio = {
@@ -36,8 +36,24 @@ function normalizarFavoritos(favoritos, equivalentes) {
   return [...new Set(favoritos.map((id) => equivalentes.get(id) ?? id))];
 }
 
+function vincularCategorias(categorias) {
+  const porId = new Map(categorias.map((categoria) => [categoria.id, categoria]));
+  const membros = new Map(categorias.map(({ slug }) => [slug, new Set()]));
+  for (const inicio of categorias) {
+    const visitados = new Set();
+    let categoria = inicio;
+    while (categoria && !visitados.has(categoria.id)) {
+      visitados.add(categoria.id);
+      membros.get(categoria.slug).add(inicio.id);
+      categoria = porId.get(categoria.parentId);
+    }
+  }
+  return membros;
+}
+
 export function StoreProvider({ children }) {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [revision, setRevision] = useState(0);
@@ -55,8 +71,15 @@ export function StoreProvider({ children }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    listarProdutos(controller.signal)
-      .then(setProducts)
+    Promise.all([listarProdutos(controller.signal), listarCategorias(controller.signal)])
+      .then(([produtos, categorias]) => {
+        if (controller.signal.aborted) return;
+        const slugsPorId = new Map(categorias.map(({ id, slug }) => [id, slug]));
+        setCategories(categorias);
+        setProducts(produtos.map((produto) => ({
+          ...produto, category: slugsPorId.get(produto.categoryId) ?? produto.category,
+        })));
+      })
       .catch((erro) => { if (!controller.signal.aborted) setError(erro.message); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
@@ -107,12 +130,13 @@ export function StoreProvider({ children }) {
   const cartItems = products
     .filter((p) => cart[p.id] > 0)
     .map((p) => ({ ...p, qty: cart[p.id] }));
-  const categoryNames = Object.fromEntries(products.map((p) => [p.category, p.categoryName]));
+  const categoryNames = Object.fromEntries(categories.map(({ slug, name }) => [slug, name]));
+  const categoryMembers = vincularCategorias(categories);
   const totalItems = cartItems.reduce((s, p) => s + p.qty, 0);
   const total = cartItems.reduce((s, p) => s + Math.round(p.price * 100) * p.qty, 0) / 100;
 
   const value = {
-    products, loading, error, refreshProducts, categoryNames, categorySlugs: Object.keys(categoryNames),
+    products, loading, error, refreshProducts, categoryNames, categorySlugs: Object.keys(categoryNames), categoryMembers,
     cart, cartItems, totalItems, total, cartOpen, setCartOpen, favorites,
     address, setAddress, account, user: account?.role === "cliente" ? account : null,
     admin: account?.role === "admin" ? account : null, login, logout,
