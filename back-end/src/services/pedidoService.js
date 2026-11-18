@@ -10,7 +10,7 @@ async function criarPedido({ idCliente, itens, endereco_entrega, cep_entrega, ch
   for (const item of itens) {
     quantidades.set(item.id_produto, (quantidades.get(item.id_produto) ?? 0) + item.quantidade);
   }
-  const existente = pedidoModel.buscarReenvio(dados, quantidades);
+  const existente = await pedidoModel.buscarReenvio(dados, quantidades);
   if (existente) return existente;
 
   const endereco = await cepService.consultarCep(cep_entrega);
@@ -19,22 +19,24 @@ async function criarPedido({ idCliente, itens, endereco_entrega, cep_entrega, ch
 }
 
 async function gerarPreferencia(pedido) {
-  const salva = pedidoModel.buscarPreferencia(pedido.id);
-  if (salva) return salva;
   if (preferenciasEmCriacao.has(pedido.id)) return preferenciasEmCriacao.get(pedido.id);
-
-  const referencia = pedidoModel.referenciaPagamento(pedido.id);
-  if (!referencia) return undefined;
-
-  const tarefa = mercadoPago.criarPreferencia(pedido, referencia).then((preferencia) =>
-    pedidoModel.salvarPreferencia(pedido.id, preferencia)
-  );
+  const tarefa = obterPreferencia(pedido);
   preferenciasEmCriacao.set(pedido.id, tarefa);
   try {
     return await tarefa;
   } finally {
     preferenciasEmCriacao.delete(pedido.id);
   }
+}
+
+async function obterPreferencia(pedido) {
+  const salva = await pedidoModel.buscarPreferencia(pedido.id);
+  if (salva) return salva;
+
+  const referencia = await pedidoModel.referenciaPagamento(pedido.id);
+  if (!referencia) return undefined;
+  const preferencia = await mercadoPago.criarPreferencia(pedido, referencia);
+  return pedidoModel.salvarPreferencia(pedido.id, preferencia);
 }
 
 module.exports = { criarPedido, detalharPedido: pedidoModel.buscarPedido, gerarPreferencia };

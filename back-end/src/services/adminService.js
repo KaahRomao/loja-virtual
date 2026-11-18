@@ -98,7 +98,7 @@ async function alterarSituacaoPedido(id, nova) {
   }
   let preferenciaVerificada = null;
   if (nova === "Cancelado") {
-    const checkout = adminModel.buscarCheckout(id);
+    const checkout = await adminModel.buscarCheckout(id);
     if (checkout?.preferencia_id) {
       const expirada = await mercadoPago.preferenciaExpirada(checkout.preferencia_id, checkout.referencia_pagamento);
       if (!expirada) {
@@ -111,7 +111,7 @@ async function alterarSituacaoPedido(id, nova) {
       preferenciaVerificada = checkout.preferencia_id;
     }
   }
-  adminModel.alterarSituacaoPedido(id, pedido.situacao, nova, preferenciaVerificada);
+  await adminModel.alterarSituacaoPedido(id, pedido.situacao, nova, preferenciaVerificada);
   return adminModel.buscarPedido(id);
 }
 

@@ -23,9 +23,9 @@ app.get("/", (req, res) => {
   res.status(200).json({ mensagem: "API da VORA no ar" });
 });
 
-app.get("/health", (req, res) => {
+app.get("/health", async (req, res) => {
   try {
-    db.execute("SELECT id FROM produto LIMIT 1");
+    await db.execute("SELECT id FROM produto LIMIT 1");
     return res.json({ status: "ok" });
   } catch (erro) {
     console.error("Falha na verificação do SQLite:", erro.code ?? erro.message);

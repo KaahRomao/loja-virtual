@@ -6,7 +6,7 @@ const SELECT = `SELECT p.id, p.nome_produto, p.descricao, p.img_url, p.preco,
   JOIN situacao s ON s.id = p.id_situacao
   WHERE s.nome_situacao = 'Ativo' AND c.status = 1`;
 
-function listar({ categoria, busca }) {
+async function listar({ categoria, busca }) {
   let sql = SELECT;
   const args = [];
   if (categoria) {
@@ -17,11 +17,13 @@ function listar({ categoria, busca }) {
     sql += " AND p.nome_produto LIKE ?";
     args.push(`%${busca}%`);
   }
-  return db.execute({ sql: sql + " ORDER BY p.id", args }).rows;
+  const { rows } = await db.execute({ sql: sql + " ORDER BY p.id", args });
+  return rows;
 }
 
-function buscarPorId(id) {
-  return db.execute({ sql: SELECT + " AND p.id = ?", args: [id] }).rows[0];
+async function buscarPorId(id) {
+  const { rows } = await db.execute({ sql: SELECT + " AND p.id = ?", args: [id] });
+  return rows[0];
 }
 
 module.exports = { listar, buscarPorId };

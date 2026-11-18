@@ -18,8 +18,8 @@ const PRODUTO_SELECT = `SELECT p.id, p.nome_produto, p.descricao, p.img_url, p.p
   JOIN categoria c ON c.id = p.id_categoria
   JOIN situacao s ON s.id = p.id_situacao`;
 
-function idSituacao(nome) {
-  const r = db.execute({
+async function idSituacao(nome, executor = db) {
+  const r = await executor.execute({
     sql: "SELECT id FROM situacao WHERE nome_situacao = ?",
     args: [nome],
   });
@@ -50,7 +50,7 @@ async function buscarProduto(id) {
 }
 
 async function criarProduto(p) {
-  const situacaoId = idSituacao(p.situacao ?? "Ativo");
+  const situacaoId = await idSituacao(p.situacao ?? "Ativo");
   const r = await db.execute({
     sql: `INSERT INTO produto (nome_produto, descricao, img_url, preco, preco_anterior, unidade, estoque, id_categoria, id_situacao)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -80,7 +80,7 @@ async function atualizarProduto(id, campos, situacao) {
   }
   if (situacao) {
     sets.push("id_situacao = ?");
-    args.push(idSituacao(situacao));
+    args.push(await idSituacao(situacao));
   }
   if (sets.length === 0) return;
   args.push(id);
@@ -174,25 +174,27 @@ async function buscarPedido(id) {
           WHERE pp.id_pedido = ?`,
     args: [id],
   });
-  return { ...pedido, itens: ri.rows, pagamentos: listarDoPedido(id) };
+  return { ...pedido, itens: ri.rows, pagamentos: await listarDoPedido(id) };
 }
 
-function buscarCheckout(id) {
-  return db.execute({
+async function buscarCheckout(id, executor = db) {
+  const { rows } = await executor.execute({
     sql: "SELECT id_cliente, preferencia_id, referencia_pagamento FROM pedido WHERE id = ?",
     args: [id],
-  }).rows[0];
+  });
+  return rows[0];
 }
 
 // Troca a situação só se o pedido ainda estiver em "de". Cancelar devolve o estoque.
 function alterarSituacaoPedido(id, de, para, preferenciaVerificada = null) {
-  db.transaction(() => {
-    const idDe = idSituacao(de);
-    const idPara = idSituacao(para);
+  return db.transaction(async (tx) => {
+    const idDe = await idSituacao(de, tx);
+    const idPara = await idSituacao(para, tx);
 
     if (para === "Cancelado") {
-      const checkout = buscarCheckout(id);
-      const pagamentoEmCurso = listarDoPedido(id).some((pg) =>
+      const checkout = await buscarCheckout(id, tx);
+      const pagamentos = await listarDoPedido(id, tx);
+      const pagamentoEmCurso = pagamentos.some((pg) =>
         pg.situacao === "Pendente" || pg.situacao === "Aprovado"
       );
       if (!checkout || checkout.preferencia_id !== preferenciaVerificada || pagamentoEmCurso) {
@@ -202,7 +204,7 @@ function alterarSituacaoPedido(id, de, para, preferenciaVerificada = null) {
       }
     }
 
-    const r = db.execute({
+    const r = await tx.execute({
       sql: "UPDATE pedido SET id_situacao = ? WHERE id = ? AND id_situacao = ?",
       args: [idPara, id, idDe],
     });
@@ -215,7 +217,7 @@ function alterarSituacaoPedido(id, de, para, preferenciaVerificada = null) {
     }
 
     if (para === "Cancelado") {
-      db.execute({
+      await tx.execute({
         sql: `UPDATE produto
               SET estoque = estoque + (SELECT pp.quantidade FROM produto_pedido pp
                                        WHERE pp.id_pedido = ? AND pp.id_produto = produto.id)

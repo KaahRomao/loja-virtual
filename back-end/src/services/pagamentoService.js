@@ -17,7 +17,7 @@ function registrar(pg, idCliente) {
 async function processarPagamento(id, idCliente, idPedido) {
   if (idPedido === undefined) return registrar(await mercadoPago.buscarPagamento(id), idCliente);
 
-  const pedido = pagamentoModel.referenciaDoCliente(idPedido, idCliente);
+  const pedido = await pagamentoModel.referenciaDoCliente(idPedido, idCliente);
   if (!pedido) return null;
   if (!pedido.referencia_pagamento) return { processado: false };
 
@@ -28,7 +28,8 @@ async function processarPagamento(id, idCliente, idPedido) {
   }
   const pagamentos = await mercadoPago.buscarPorReferencia(pedido.referencia_pagamento);
   const vinculados = pagamentos.filter((pg) => pg.referencia === pedido.referencia_pagamento);
-  const resultados = vinculados.map((pg) => registrar(pg, idCliente));
+  const resultados = [];
+  for (const pg of vinculados) resultados.push(await registrar(pg, idCliente));
   return {
     processado: resultados.some((resultado) => resultado.processado),
     pagamento_em_curso: vinculados.some((pg) => ["Pendente", "Aprovado"].includes(situacoes.get(pg.status))),

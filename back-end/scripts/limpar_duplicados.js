@@ -13,9 +13,17 @@ const duplicados = `
     AND NOT EXISTS (SELECT 1 FROM produto_carrinho WHERE id_produto = p.id)
 `;
 
-if (process.argv.includes("--aplicar")) {
-  const { rowsAffected } = db.execute(`DELETE FROM produto WHERE id IN (${duplicados})`);
-  console.log(`Duplicados removidos: ${rowsAffected}`);
-} else {
-  console.log(`Duplicados sem referência: ${db.execute(duplicados).rows.length}. Use --aplicar para remover.`);
+async function main() {
+  if (process.argv.includes("--aplicar")) {
+    const { rowsAffected } = await db.execute(`DELETE FROM produto WHERE id IN (${duplicados})`);
+    console.log(`Duplicados removidos: ${rowsAffected}`);
+  } else {
+    const { rows } = await db.execute(duplicados);
+    console.log(`Duplicados sem referência: ${rows.length}. Use --aplicar para remover.`);
+  }
 }
+
+main().catch((erro) => {
+  console.error(erro.message);
+  process.exitCode = 1;
+});

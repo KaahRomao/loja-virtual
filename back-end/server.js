@@ -7,7 +7,8 @@ if (!process.env.JWT_SECRET?.trim()) {
 
 const app = require("./src/app");
 
-if (require.main === module) {
+async function iniciar() {
+  await require("./src/database/connection").inicializar();
   const render = process.env.RENDER === "true";
   const port = Number(process.env.PORT || (render ? 10000 : 3000));
   const host = render ? "0.0.0.0" : process.env.HOST || "127.0.0.1";
@@ -17,6 +18,13 @@ if (require.main === module) {
   });
   server.on("error", (erro) => {
     console.error(`A API da VORA não conseguiu iniciar em ${host}:${port} (${erro.code ?? erro.message})`);
+    process.exitCode = 1;
+  });
+}
+
+if (require.main === module) {
+  iniciar().catch((erro) => {
+    console.error("Falha ao inicializar o banco:", erro.code ?? erro.message);
     process.exitCode = 1;
   });
 }

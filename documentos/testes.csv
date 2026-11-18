@@ -15,7 +15,7 @@ Pagamentos;Registrar transações pendente recusada e aprovada;Histórico gravad
 Pagamentos;Receber evento assinado ou sem assinatura;200 com assinatura válida e 401 sem assinatura;Aprovado em HTTP local com transação simulada
 Front-end;Busca carrinho endereço cadastro pedido e aprovação em 360 px;Fluxo navegável sem rolagem horizontal na página;Aprovado no Firefox com integrações externas simuladas
 Front-end;Recarregar pedido e consultar no painel;Pedido continua acessível e é listado;Aprovado no Firefox com SQLite temporário
-Pagamentos;Compra no Checkout Pro externo com cartão de teste;Aprovação ou recusa real do ambiente de teste;Pendente de execução com credenciais de teste
+Pagamentos;Compra no Checkout Pro externo com cartão de teste;Aprovação ou recusa real do ambiente de teste;Aprovado em 18/11/2026. Pedido local nº 8 marcado como Pago e transação de R$ 70,80 registrada no SQLite.
 SQLite;Abrir cópia do banco legado com o esquema anterior;Novos campos disponíveis e registros preservados;Aprovado em cópia SQLite temporária
 Integração;Consultar o CEP público 01001-000 no ViaCEP;Endereço e UF SP;Aprovado no serviço externo
 API;Reenviar uma chave de checkout com endereço diferente;409 sem duplicar o pedido;Aprovado em HTTP local

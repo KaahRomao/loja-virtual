@@ -1,28 +1,30 @@
 const db = require("../database/connection");
 
-function referenciaDoCliente(idPedido, idCliente) {
-  return db.execute({
+async function referenciaDoCliente(idPedido, idCliente) {
+  const { rows } = await db.execute({
     sql: "SELECT referencia_pagamento FROM pedido WHERE id = ? AND id_cliente = ?",
     args: [idPedido, idCliente],
-  }).rows[0];
+  });
+  return rows[0];
 }
 
-function listarDoPedido(id) {
-  return db.execute({
+async function listarDoPedido(id, executor = db) {
+  const { rows } = await executor.execute({
     sql: `SELECT pg.id_transacao_externa, pg.forma_pagamento, s.nome_situacao AS situacao,
                  pg.data_aprovacao
           FROM pagamento pg JOIN situacao s ON s.id = pg.id_situacao
           WHERE pg.id_pedido = ? ORDER BY pg.id DESC`,
     args: [id],
-  }).rows;
+  });
+  return rows;
 }
 
 function registrar(pg, situacao, idCliente) {
-  return db.transaction(() => {
-    const pedido = db.execute({
+  return db.transaction(async (tx) => {
+    const { rows: [pedido] } = await tx.execute({
       sql: "SELECT id, id_cliente, valor_total FROM pedido WHERE referencia_pagamento = ?",
       args: [pg.referencia],
-    }).rows[0];
+    });
     if (!pedido || (idCliente !== undefined && idCliente !== pedido.id_cliente)) {
       return { processado: false, motivo: "pedido inexistente" };
     }
@@ -30,7 +32,7 @@ function registrar(pg, situacao, idCliente) {
       return { processado: false, motivo: "valor ou moeda divergente" };
     }
 
-    const { rowsAffected } = db.execute({
+    const { rowsAffected } = await tx.execute({
       sql: `INSERT INTO pagamento
               (id_transacao_externa, forma_pagamento, id_pedido, id_situacao, data_aprovacao, data_criado)
             VALUES (?, ?, ?, (SELECT id FROM situacao WHERE nome_situacao = ?),
@@ -46,7 +48,7 @@ function registrar(pg, situacao, idCliente) {
     });
 
     if (situacao === "Aprovado" && rowsAffected) {
-      db.execute({
+      await tx.execute({
         sql: `UPDATE pedido SET id_situacao = (SELECT id FROM situacao WHERE nome_situacao = 'Pago')
               WHERE id = ? AND id_situacao = (SELECT id FROM situacao WHERE nome_situacao = 'Pendente')`,
         args: [pedido.id],

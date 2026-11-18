@@ -12,13 +12,21 @@ const { Payment, Preference } = require("mercadopago");
 test("API local com SQLite e respostas de teste das integrações", async (t) => {
   const pasta = mkdtempSync(join(tmpdir(), "vora-teste-"));
   process.env.DB_PATH = join(pasta, "vora.sqlite");
+  if (process.env.VORA_TEST_LIBSQL === "1") {
+    process.env.RENDER = "true";
+    process.env.TURSO_DATABASE_URL = `file:${process.env.DB_PATH}`;
+  } else {
+    delete process.env.RENDER;
+    delete process.env.TURSO_DATABASE_URL;
+  }
+  delete process.env.TURSO_AUTH_TOKEN;
   process.env.JWT_SECRET = randomUUID();
   process.env.MP_TEST_ACCESS_TOKEN = "fixture";
   process.env.MP_WEBHOOK_SECRET = randomUUID();
   process.env.MP_RETURN_URL = "https://loja.example.invalid";
 
   const db = require("../src/database/connection");
-  db.execute({
+  await db.execute({
     sql: "INSERT INTO administrador(nome,email,senha) VALUES (?,?,?)",
     args: ["Admin teste", "admin@example.invalid", await bcrypt.hash("senha-teste", 4)],
   });
