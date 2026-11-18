@@ -1,6 +1,6 @@
 const cepService = require("../services/cepService");
 
-async function consultar(req, res) {
+async function consultar(req, res, next) {
   try {
     const endereco = await cepService.consultarCep(req.params.cep);
     const frete = cepService.calcularFrete(endereco.uf);
@@ -16,8 +16,7 @@ async function consultar(req, res) {
     if (erro.codigo === "CEP_SERVICO_INDISPONIVEL") {
       return res.status(502).json({ erro: erro.message });
     }
-    console.error(erro);
-    return res.status(500).json({ erro: "Erro interno do servidor" });
+    return next(erro);
   }
 }
 

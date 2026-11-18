@@ -1,6 +1,6 @@
 const authService = require("../services/authService");
 
-async function login(req, res) {
+async function login(req, res, next) {
   try {
     const { email, senha } = req.body ?? {};
 
@@ -21,8 +21,7 @@ async function login(req, res) {
     if (erro.codigo === "CREDENCIAIS_INVALIDAS") {
       return res.status(401).json({ erro: erro.message });
     }
-    console.error(erro);
-    res.status(500).json({ erro: "Erro interno do servidor" });
+    return next(erro);
   }
 }
 

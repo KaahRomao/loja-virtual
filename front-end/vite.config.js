@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 
 const proxy = {
   "/api": {
-    target: "http://localhost:3000",
+    target: "http://127.0.0.1:3000",
     changeOrigin: true,
     rewrite: (path) => path.replace(/^\/api(?=\/|$)/, ""),
   },

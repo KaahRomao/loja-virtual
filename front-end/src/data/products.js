@@ -33,8 +33,9 @@ export function validateZip(v) {
   return null;
 }
 
+export const STOCK_MINIMUM = 15;
 export const stockStatus = (stock) =>
-  stock === 0 ? "esgotado" : stock < 15 ? "baixo" : "disponivel";
+  stock === 0 ? "esgotado" : stock < STOCK_MINIMUM ? "baixo" : "disponivel";
 export const stockLabels = {
   disponivel: "Disponível",
   baixo: "Estoque baixo",

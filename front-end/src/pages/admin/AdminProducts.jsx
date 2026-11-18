@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, PackageCheck, Tag, TriangleAlert, PackageX, Search, Pencil, X } from "lucide-react";
-import { Link, useOutletContext } from "react-router-dom";
-import { camposDePreco, formatPrice, stockStatus, stockLabels } from "../../data/products";
+import { Link, useOutletContext, useSearchParams } from "react-router-dom";
+import { camposDePreco, formatPrice, stockStatus, stockLabels, STOCK_MINIMUM } from "../../data/products";
 import AdminHeading from "../../components/AdminHeading";
 import ProductPhoto from "../../components/ProductPhoto";
 import Button from "../../components/ui/Button";
@@ -16,6 +16,16 @@ const statValue = "block font-display text-[23px] font-[550] leading-[normal]";
 const statLabel = "block text-[12px] text-muted-foreground";
 const rowCols = "admin-product-row items-center gap-3.5 px-5 py-3";
 const fieldLabel = "admin-product-label text-[11px] font-bold text-muted-foreground";
+
+function correspondeSituacao(row, filtro) {
+  if (filtro === "todos") return true;
+  if (filtro === "inativos") return !row.active;
+  if (!row.active || !row.categoryActive) return false;
+  if (filtro === "ativos") return true;
+  if (filtro === "ofertas") return row.oldPrice > row.price;
+  if (filtro === "repor") return row.stock < STOCK_MINIMUM;
+  return stockStatus(row.stock) === filtro;
+}
 
 // Janelinha de edição rápida (nome, preços e estoque)
 function QuickEdit({ row, onClose, onSave }) {
@@ -82,23 +92,25 @@ function QuickEdit({ row, onClose, onSave }) {
 
 export default function AdminProducts() {
   const { rows, saveProduct, categoryNames } = useOutletContext();
+  const [params] = useSearchParams();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("todos");
-  const [status, setStatus] = useState("todos");
+  const [status, setStatus] = useState(() => params.get("estoque") === "repor" ? "repor" : "ativos");
   const [editing, setEditing] = useState(null);
 
+  const ativos = rows.filter((r) => r.active && r.categoryActive);
   const counts = {
-    total: rows.length,
-    offers: rows.filter((r) => r.oldPrice).length,
-    low: rows.filter((r) => stockStatus(r.stock) === "baixo").length,
-    out: rows.filter((r) => stockStatus(r.stock) === "esgotado").length,
+    total: ativos.length,
+    offers: ativos.filter((r) => r.oldPrice > r.price).length,
+    low: ativos.filter((r) => stockStatus(r.stock) === "baixo").length,
+    out: ativos.filter((r) => stockStatus(r.stock) === "esgotado").length,
   };
 
   const list = rows.filter(
     (r) =>
       r.name.toLowerCase().includes(q.toLowerCase()) &&
       (cat === "todos" || r.category === cat) &&
-      (status === "todos" || (status === "ofertas" ? r.oldPrice : stockStatus(r.stock) === status)),
+      correspondeSituacao(r, status),
   );
 
   return (
@@ -108,7 +120,7 @@ export default function AdminProducts() {
       </AdminHeading>
       <div className="mt-[34px]">
         <div className="mb-5 grid grid-cols-4 gap-3.5 tablet:grid-cols-[repeat(2,1fr)]">
-          <div className={adminStat}><PackageCheck className="text-primary" /><span><b className={statValue}>{counts.total}</b><small className={statLabel}>Produtos cadastrados</small></span></div>
+          <div className={adminStat}><PackageCheck className="text-primary" /><span><b className={statValue}>{counts.total}</b><small className={statLabel}>Produtos ativos</small></span></div>
           <div className={adminStat}><Tag className="text-primary" /><span><b className={statValue}>{counts.offers}</b><small className={statLabel}>Em oferta</small></span></div>
           <div className={adminStat}><TriangleAlert className="text-primary" /><span><b className={statValue}>{counts.low}</b><small className={statLabel}>Estoque baixo</small></span></div>
           <div className={adminStat}><PackageX className="text-primary" /><span><b className={statValue}>{counts.out}</b><small className={statLabel}>Esgotados</small></span></div>
@@ -130,7 +142,10 @@ export default function AdminProducts() {
               {Object.entries(categoryNames).map(([slug, name]) => <option key={slug} value={slug}>{name}</option>)}
             </select>
             <select className={adminFilterField} aria-label="Filtrar por situação" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="ativos">Ativos</option>
+              <option value="inativos">Excluídos / inativos</option>
               <option value="todos">Todas as situações</option>
+              <option value="repor">Repor estoque</option>
               <option value="disponivel">Disponível</option>
               <option value="baixo">Estoque baixo</option>
               <option value="esgotado">Esgotado</option>
@@ -161,7 +176,9 @@ export default function AdminProducts() {
                     <b>{formatPrice(r.price)}</b>
                   </span>
                   <span><span className={fieldLabel}>Estoque</span>{r.stock} un.</span>
-                  <span className={cx(statusPill, stockTone[st])}>{stockLabels[st]}</span>
+                  <span className={cx(statusPill, r.active && r.categoryActive ? stockTone[st] : "bg-muted text-muted-foreground")}>
+                    {!r.active ? "Inativo" : !r.categoryActive ? "Categoria excluída" : stockLabels[st]}
+                  </span>
                   <span className="admin-product-actions flex flex-wrap items-center gap-2.5">
                     <Button variant="outline" size="sm" onClick={() => setEditing(r)}><Pencil size={16} /> Rápido</Button>
                     <Link className={crumbLink} to={`/admin/produtos/${r.id}`}>Ficha</Link>

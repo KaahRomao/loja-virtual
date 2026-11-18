@@ -1,6 +1,6 @@
 const produtoService = require("../services/produtoService");
 
-async function listar(req, res) {
+async function listar(req, res, next) {
   try {
     const { categoria, busca } = req.query;
     if ((categoria !== undefined && (typeof categoria !== "string" || !/^[1-9]\d*$/.test(categoria))) ||
@@ -10,12 +10,11 @@ async function listar(req, res) {
     const produtos = await produtoService.listarProdutos({ categoria, busca });
     res.status(200).json(produtos);
   } catch (erro) {
-    console.error(erro);
-    res.status(500).json({ erro: "Erro interno do servidor" });
+    return next(erro);
   }
 }
 
-async function detalhar(req, res) {
+async function detalhar(req, res, next) {
   try {
     const id = Number(req.params.id);
 
@@ -31,8 +30,7 @@ async function detalhar(req, res) {
 
     res.status(200).json(produto);
   } catch (erro) {
-    console.error(erro);
-    res.status(500).json({ erro: "Erro interno do servidor" });
+    return next(erro);
   }
 }
 

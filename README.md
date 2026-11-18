@@ -4,9 +4,11 @@ Loja virtual do Projeto Integrador de Desenvolvimento de Sistemas do SENAI. A Vo
 
 React, Vite e Tailwind no front-end. Node.js, Express, JWT, bcrypt e SQLite no back-end. O ViaCEP fornece o endereço e o Mercado Pago Checkout Pro é usado para compras de teste.
 
+[Loja publicada no Vercel](https://loja-virtual-f96n.vercel.app/) · [API do Render](https://vora-supermarket.onrender.com/health)
+
 ## Rodar localmente
 
-Use **Node.js 22.16 ou superior** e npm. A API usa a porta **3000** e o front-end usa a **5173**. O Vite encaminha `/api` para a API local.
+Use **Node.js 22.16 ou superior** e npm. A API usa `127.0.0.1:3000` e o front-end usa a porta **5173**. O Vite encaminha `/api` para a API local. Veja as variáveis em [back-end/.env.example](back-end/.env.example) e [front-end/.env.example](front-end/.env.example).
 
 1. Instale as dependências a partir da raiz do repositório.
 
@@ -48,7 +50,7 @@ Use **Node.js 22.16 ou superior** e npm. A API usa a porta **3000** e o front-en
 
 1. Na aplicação do Checkout Pro, use as **credenciais de teste do vendedor** e configure o Access Token em `MP_TEST_ACCESS_TOKEN` no `back-end/.env`. Reinicie a API. Use a conta de comprador e o cartão de teste fornecidos pelo Mercado Pago. [Contas de teste](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-preferences/test-accounts) · [Compras de teste](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-preferences/integration-test/test-purchases)
 2. No catálogo, adicione um item e prossiga ao endereço. Use, por exemplo, o CEP `01001-000`. Informe o número, entre na conta da loja e confirme o pedido.
-3. Na página do pedido, selecione **Preparar pagamento de teste** e **Abrir Checkout Pro**. No roteiro local, conclua o teste na aba do Mercado Pago. Volte à aba da loja e use **Atualizar situação**. A API consulta a referência do pedido diretamente no provedor.
+3. Na página do pedido, selecione **Pagar com Mercado Pago** e **Abrir Mercado Pago**. Use o comprador e o cartão de teste. Na volta à loja, consulte a confirmação. Você também pode selecionar **Atualizar situação** para que a API consulte o provedor pela referência do pedido.
 4. Para retorno por redirecionamento e webhook, configure `MP_RETURN_URL` com a origem HTTPS pública do front-end. Configure também `MP_WEBHOOK_URL` com a rota pública `/pagamentos/webhook` da API, ou `/api/pagamentos/webhook` quando houver proxy. Use `MP_WEBHOOK_SECRET` com a assinatura da aplicação. As URLs de retorno do Mercado Pago exigem um domínio acessível. [URLs de retorno](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-preferences/configure-back-urls) · [Notificações](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-preferences/payment-notifications)
 
 O Access Token fica no servidor. O checkout usa a credencial de teste configurada para a entrega.
@@ -77,9 +79,11 @@ O teste da API abre um servidor em loopback e cria um SQLite temporário. As res
 [Captura do painel administrativo](documentos/capturas/painel-pedidos.png)
 
 - [API e exemplos](documentos/API.md)
+- [Coleção Postman](documentos/Vora.postman_collection.json)
 - [Manual e roteiro de demonstração](documentos/manual.md)
 - [Resultados de testes](documentos/testes.csv)
 - [Auditoria de cliente e administração](documentos/auditoria-vora.md)
+- [Auditoria e roteiro para a apresentação](documentos/auditoria-professor-vora.md)
 - [Requisitos e casos de uso](documentos/requisitos.md)
 - [DER no Draw.io](documentos/loja_virtual.drawio) e [dicionário de dados](documentos/lojaVirtual_dicionario.xlsx)
 - [Criação do SQLite](back-end/src/database/sql/create.sql) e [dados do catálogo](back-end/src/database/sql/insert.sql)

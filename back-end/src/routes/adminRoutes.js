@@ -13,10 +13,12 @@ router.get("/produtos", c.listarProdutos);
 router.get("/produtos/:id", c.detalharProduto);
 router.post("/produtos", c.criarProduto);
 router.put("/produtos/:id", c.atualizarProduto);
+router.delete("/produtos/:id", c.excluirProduto);
 
 router.get("/categorias", c.listarCategorias);
 router.post("/categorias", c.criarCategoria);
 router.put("/categorias/:id", c.atualizarCategoria);
+router.delete("/categorias/:id", c.excluirCategoria);
 
 router.get("/pedidos", c.listarPedidos);
 router.get("/pedidos/:id", c.detalharPedido);
