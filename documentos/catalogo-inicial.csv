@@ -1,0 +1,17 @@
+﻿ID;Categoria;Produto;Descrição;Preço (R$);Preço anterior (R$);Estoque inicial
+1;Frutas;Banana Prata 1kg;Banana prata fresca, vendida por quilo.;5,99;6,99;120
+2;Frutas;Maçã Fuji 1kg;Maçã Fuji selecionada, doce e crocante.;10,99;;80
+3;Legumes e Verduras;Tomate Italiano 1kg;Tomate italiano firme, ideal para molhos e saladas.;8,49;;90
+4;Legumes e Verduras;Alface Crespa un.;Alface crespa fresca, pé inteiro.;3,49;;60
+5;Mercearia;Arroz Branco Tipo 1 5kg;Arroz branco tipo 1, pacote de 5kg.;24,90;27,90;150
+6;Mercearia;Feijão Carioca 1kg;Feijão carioca tipo 1, pacote de 1kg.;8,99;;140
+7;Mercearia;Macarrão Espaguete 500g;Macarrão espaguete de sêmola, 500g.;4,59;;200
+8;Mercearia;Café Torrado e Moído 500g;Café torrado e moído, sabor intenso, 500g.;21,90;;100
+9;Bebidas;Suco de Laranja Integral 1L;Suco de laranja integral, sem açúcar adicionado.;12,49;;70
+10;Bebidas;Água Mineral sem Gás 1,5L;Água mineral natural sem gás, garrafa de 1,5L.;2,49;;300
+11;Bebidas;Refrigerante Cola 2L;Refrigerante sabor cola, garrafa de 2L.;9,99;;110
+12;Laticínios e Frios;Leite Integral 1L;Leite integral UHT, caixa de 1L.;4,99;5,49;250
+13;Laticínios e Frios;Queijo Mussarela Fatiado 200g;Queijo mussarela fatiado, bandeja de 200g.;15,99;;60
+14;Laticínios e Frios;Iogurte Natural 170g;Iogurte natural integral, pote de 170g.;3,49;;130
+15;Padaria;Pão Francês 500g;Pão francês assado no dia, 500g.;10,90;;50
+16;Padaria;Pão de Forma Tradicional 500g;Pão de forma tradicional, pacote de 500g.;7,99;;85

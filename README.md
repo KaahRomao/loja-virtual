@@ -1,91 +1,152 @@
 # Vora Supermarket
 
-Loja virtual do Projeto Integrador de Desenvolvimento de Sistemas do SENAI. A Vora oferece um catálogo de supermercado, cálculo de entrega por CEP, checkout de teste e um painel para administrar produtos, categorias e pedidos.
+A Vora é uma loja virtual de supermercado criada para o Projeto Integrador de Desenvolvimento de Sistemas do SENAI. A versão publicada reúne catálogo, ofertas, favoritos, cálculo de frete por CEP, pedidos, checkout de teste e painel de administração.
 
-React, Vite e Tailwind no front-end. Node.js, Express, JWT, bcrypt e SQLite no back-end. O ViaCEP fornece o endereço e o Mercado Pago Checkout Pro é usado para compras de teste.
+[Abrir a loja na Vercel](https://loja-virtual-f96n.vercel.app/) · [Consultar a saúde da API no Render](https://vora-supermarket.onrender.com/health) · [Acompanhar a entrega no Trello](https://trello.com/b/Yt18MPIo/loja-virtual-kau%C3%AA-rom%C3%A3o)
 
-[Loja publicada no Vercel](https://loja-virtual-f96n.vercel.app/) · [API do Render](https://vora-supermarket.onrender.com/health)
+## Como usar
+
+1. Explore o catálogo ou procure um produto. Nas fichas com mais de uma foto, use as miniaturas e o botão de ampliar. O coração no cabeçalho abre **Favoritos**.
+2. Adicione produtos ao carrinho e informe um CEP válido. Para avançar no checkout, entre como cliente ou faça o cadastro. Ao entrar, a loja retoma a etapa e mantém o carrinho.
+3. Confira os itens, o endereço, o frete e o prazo. Na confirmação, abra **Pagar com Mercado Pago** e, em seguida, **Abrir Mercado Pago** para usar a conta e o cartão de teste.
+4. Acompanhe a compra em **Minha conta → Meus pedidos**. Use **Atualizar situação** no pedido para consultar o Mercado Pago.
+5. Para administrar, use **Entrar** com uma conta administrativa. O menu **Painel da loja** abre o resumo, as fichas de produtos, as categorias e os pedidos.
+
+Para ver os botões de edição, exclusão e restauração do catálogo, siga o [manual de uso](documentos/manual.md).
+
+## Regras principais
+
+| Tema | Regra aplicada |
+| --- | --- |
+| Entrega | A API consulta a UF do CEP no ViaCEP. São Paulo custa R$ 15,00 e leva até 3 dias úteis. RJ, MG e ES custam R$ 20,00 e levam até 5 dias úteis. Os demais estados custam R$ 30,00 e levam até 8 dias úteis. |
+| Estoque | A API confere estoque e preços na criação do pedido e baixa as unidades na mesma transação. O painel sinaliza de 1 a 14 unidades como estoque baixo, zero como esgotado e sugere repor até 15. |
+| Pedido | A API preserva o preço dos itens e o endereço da compra. Uma chave de checkout permite reenviar a mesma tentativa sem criar outro pedido. |
+| Pagamento | O Checkout Pro usa credenciais de teste. O estado do pagamento é separado do estado do pedido. A API consulta o provedor e confere referência, valor e moeda antes de registrar a transação. |
+| Cancelamento | O dono ou o administrador pode cancelar um pedido pendente elegível. A reposição de estoque ocorre uma vez. Se houver preferência criada, a API exige que ela tenha expirado e que o provedor confirme a ausência de pagamento aprovado ou em processamento. |
+| Catálogo | O painel cadastra, edita, inativa e restaura fichas. Categorias ativas aparecem para visitantes, inclusive quando estão vazias. A exclusão inativa o registro e preserva o histórico. |
+| Sessão e favoritos | Cliente e admin usam o mesmo login, com permissões verificadas na API. O carrinho fica no navegador. Os favoritos ficam separados por conta e pelo perfil de visitante no mesmo navegador. |
+
+O pedido começa como **Pendente**. Uma aprovação o torna **Pago**. O administrador pode avançá-lo para **Enviado** e depois **Entregue**. O cancelamento leva um pedido pendente elegível para **Cancelado**. [Requisitos e casos de uso](documentos/requisitos.md)
+
+## Arquitetura
+
+```text
+Navegador → React / Vite / Tailwind CSS / React Router
+                      ↓ HTTP e JSON
+             Node.js / Express / JWT / bcrypt
+                  ↓                       ↓
+       SQLite local ou Turso/libSQL     ViaCEP e Mercado Pago
+```
+
+| Diretório | Conteúdo |
+| --- | --- |
+| [front-end](front-end/) | Loja e painel em React, integração HTTP, rotas, armazenamento do navegador e imagens do catálogo. |
+| [back-end](back-end/) | API Express com rotas, controllers, serviços, modelos, autenticação e inicialização do banco. |
+| [documentos](documentos/) | Requisitos, manual, API, coleção Postman, modelagem e resultados das auditorias. |
+
+O banco guarda clientes, administradores, produtos, categorias, pedidos e pagamentos. Os valores monetários ficam em centavos inteiros. A URL ou caminho da imagem principal fica em `produto.img_url`, e as fotos adicionais do catálogo ficam em `front-end/public/img/produtos/vora/`. [Modelagem e persistência](documentos/banco-de-dados.md)
 
 ## Rodar localmente
 
-Use **Node.js 22.16 ou superior** e npm. A API usa `127.0.0.1:3000` e o front-end usa a porta **5173**. O Vite encaminha `/api` para a API local. Veja as variáveis em [back-end/.env.example](back-end/.env.example) e [front-end/.env.example](front-end/.env.example).
+Use **Node.js 22.16.0 ou superior** e npm. Execute os comandos na raiz do repositório.
 
-1. Instale as dependências a partir da raiz do repositório.
+```bash
+git clone https://github.com/KaahRomao/loja-virtual.git
+cd loja-virtual
+npm ci --prefix back-end
+npm ci --prefix front-end
+```
+
+1. Ao configurar pela primeira vez, copie o modelo para `back-end/.env`. Gere um segredo local e cole o resultado no campo `JWT_SECRET`. Guarde o arquivo no ambiente local.
 
    ```bash
-   npm ci --prefix back-end
-   npm ci --prefix front-end
-   ```
-
-2. Se ainda não existir, crie `back-end/.env` usando `back-end/.env.example`. Preencha `JWT_SECRET` com um segredo gerado localmente. Este comando imprime um valor para copiar para o arquivo.
-
-   ```bash
+   if [ ! -e back-end/.env ]; then cp back-end/.env.example back-end/.env; fi
    node -e 'console.log(require("node:crypto").randomBytes(32).toString("hex"))'
    ```
 
-   Sem `DB_PATH`, a API cria `back-end/data/vora.sqlite` na primeira execução. Se já houver um banco local, use `DB_PATH=./data/vora-entrega.sqlite` em `.env` para começar a demonstração com uma base separada. O caminho relativo é calculado a partir de `back-end/`. Um arquivo existente mantém seus registros.
+   O padrão é `back-end/data/vora.sqlite`. Use `DB_PATH=./data/vora-teste.sqlite` para começar com um banco separado. O caminho relativo é calculado a partir de `back-end/`. [Variáveis de exemplo da API](back-end/.env.example)
 
-3. Em um terminal, inicie a API.
+2. No primeiro terminal, rode a API. O endereço padrão é `http://127.0.0.1:3000`.
 
    ```bash
    npm --prefix back-end run dev
    ```
 
-4. Em outro terminal, inicie o front-end e abra **http://localhost:5173**.
+3. No segundo terminal, rode o front-end e abra `http://localhost:5173`. O Vite encaminha `/api` à porta 3000 por padrão.
 
    ```bash
    npm --prefix front-end run dev
    ```
 
-5. Para entrar em **http://localhost:5173/admin**, crie um administrador no mesmo SQLite usado pela API. No Bash, leia a senha sem exibi-la ou incluí-la no histórico.
+4. Confira a conexão. A primeira chamada verifica acesso ao banco. A segunda passa pelo proxy do front-end e consulta os produtos.
 
    ```bash
-   read -rsp 'Senha do administrador (mínimo de 6 caracteres): ' VORA_ADMIN_PASSWORD
-   printf '\n'
-   VORA_ADMIN_PASSWORD="$VORA_ADMIN_PASSWORD" node back-end/scripts/criar-admin.js "Admin Vora" "admin@vora.test"
-   unset VORA_ADMIN_PASSWORD
+   curl http://127.0.0.1:3000/health
+   curl http://localhost:5173/api/produtos
    ```
 
-## Compra de teste no Mercado Pago
+### Criar um administrador local
 
-1. Na aplicação do Checkout Pro, use as **credenciais de teste do vendedor** e configure o Access Token em `MP_TEST_ACCESS_TOKEN` no `back-end/.env`. Reinicie a API. Use a conta de comprador e o cartão de teste fornecidos pelo Mercado Pago. [Contas de teste](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-preferences/test-accounts) · [Compras de teste](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-preferences/integration-test/test-purchases)
-2. No catálogo, adicione um item e prossiga ao endereço. Use, por exemplo, o CEP `01001-000`. Informe o número, entre na conta da loja e confirme o pedido.
-3. Na página do pedido, selecione **Pagar com Mercado Pago** e **Abrir Mercado Pago**. Use o comprador e o cartão de teste. Na volta à loja, consulte a confirmação. Você também pode selecionar **Atualizar situação** para que a API consulte o provedor pela referência do pedido.
-4. Para retorno por redirecionamento e webhook, configure `MP_RETURN_URL` com a origem HTTPS pública do front-end. Configure também `MP_WEBHOOK_URL` com a rota pública `/pagamentos/webhook` da API, ou `/api/pagamentos/webhook` quando houver proxy. Use `MP_WEBHOOK_SECRET` com a assinatura da aplicação. As URLs de retorno do Mercado Pago exigem um domínio acessível. [URLs de retorno](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-preferences/configure-back-urls) · [Notificações](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-preferences/payment-notifications)
+No Bash, execute o comando a partir da raiz. Use um e-mail ainda não cadastrado e defina uma senha de pelo menos seis caracteres. O script lê a mesma configuração de banco da API. Depois, use a tela **Entrar** da loja.
 
-O Access Token fica no servidor. O checkout usa a credencial de teste configurada para a entrega.
+```bash
+read -rsp 'Senha do administrador: ' VORA_ADMIN_PASSWORD
+printf '\n'
+VORA_ADMIN_PASSWORD="$VORA_ADMIN_PASSWORD" node back-end/scripts/criar-admin.js "Admin Vora" "admin@vora.test"
+unset VORA_ADMIN_PASSWORD
+```
 
-## Publicação na Vercel e no Render
+### Testar o Mercado Pago
 
-- **Render.** Use o Web Service existente, com `back-end` como diretório raiz, `npm ci` no build, `npm start` na inicialização e Node.js 22.16 ou superior. A API usa o `PORT` do Render e escuta em `0.0.0.0`. Configure `/health` para verificar a leitura do SQLite e `FRONT_URL` com a origem HTTPS da loja. Configure `JWT_SECRET` no painel do serviço. [Web Services](https://render.com/docs/web-services) · [Health checks](https://render.com/docs/health-checks)
-- **Banco no Render gratuito.** Configure `TURSO_DATABASE_URL` e `TURSO_AUTH_TOKEN` no painel do serviço. Quando inicia no Render com essas variáveis, a API usa o Turso da loja e completa o esquema sem recarregar o catálogo de um banco existente. Em localhost, o projeto continua usando o SQLite em arquivo. [Cliente libSQL para Turso](https://docs.turso.tech/sdk/ts/reference)
-- **Checkout público de teste.** Configure `MP_TEST_ACCESS_TOKEN` no painel do Render com o Access Token do ambiente de teste da aplicação. Para voltar automaticamente à loja, use a origem HTTPS da Vercel em `MP_RETURN_URL`.
-- **Vercel.** Use o projeto existente com `front-end` como diretório raiz. No ambiente de produção, defina `VITE_API_URL` com a URL HTTPS da API do Render e publique o build. Confira `/health`, `/produtos` e a listagem na loja pública. [Monorepos](https://vercel.com/docs/monorepos) · [Variáveis da Vercel](https://vercel.com/docs/environment-variables)
+1. Configure `MP_TEST_ACCESS_TOKEN` no ambiente da API com o Access Token de teste do vendedor e reinicie o servidor. Use o comprador e um cartão de teste do Mercado Pago. [Compras de teste no Checkout Pro](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-preferences/integration-test/test-purchases)
+2. Monte um carrinho e use, por exemplo, o CEP `01001-000`. Entre como cliente, confirme o endereço e crie o pedido.
+3. Na página do pedido, clique em **Pagar com Mercado Pago** e **Abrir Mercado Pago**. Conclua o teste no provedor e consulte o pedido. A atualização também pode ser acionada pelo botão **Atualizar situação**.
+4. Use uma origem HTTPS pública em `MP_RETURN_URL` para retornar automaticamente ao site. Para usar notificações assinadas, configure a rota pública `/pagamentos/webhook` em `MP_WEBHOOK_URL` e a chave da aplicação em `MP_WEBHOOK_SECRET`. O segredo e o Access Token ficam no servidor. [Configuração do retorno](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-preferences/configure-back-urls) · [Configuração de notificações](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-preferences/payment-notifications)
 
-## Auditoria
+## Publicação
+
+| Serviço | Configuração usada pelo projeto |
+| --- | --- |
+| Vercel | Branch `main`, raiz `front-end`, build Vite e saída `dist`. `VITE_API_URL` aponta para a API HTTPS do Render. `vercel.json` encaminha as rotas da SPA ao `index.html`. |
+| Render | Branch `vercel`, raiz `back-end`, build `npm ci`, início `npm start` e verificação em `/health`. A API escuta em `0.0.0.0` na porta do serviço. |
+| Turso | Com `RENDER=true`, `TURSO_DATABASE_URL` e `TURSO_AUTH_TOKEN` conectam a API ao banco remoto. Os registros permanecem no Turso entre publicações do Render. |
+
+Defina `JWT_SECRET` e a origem HTTPS do site em `FRONT_URL` no Render. Configure as variáveis `MP_*` conforme o fluxo de teste. Em localhost, o arquivo SQLite é criado e mantido pela API.
+
+Em 20/11/2026, a API pública respondeu 200 em `/health`. A confirmação automática por webhook ainda depende do segredo de assinatura no Render. O checkout de teste pode ser conferido pela consulta ao provedor em **Atualizar situação**.
+
+[Configuração do front-end](front-end/.env.example) · [Web Services no Render](https://render.com/docs/web-services) · [Variáveis na Vercel](https://vercel.com/docs/environment-variables)
+
+## Testes
 
 ```bash
 npm --prefix back-end test
+VORA_TEST_LIBSQL=1 npm --prefix back-end test
 npm --prefix front-end run lint
 npm --prefix front-end run build
 ```
 
-O teste da API abre um servidor em loopback e cria um SQLite temporário. As respostas do ViaCEP e do Mercado Pago são controladas para reproduzir sucessos e falhas. Os resultados do navegador usam o mesmo tipo de simulação para as integrações externas.
+A suíte usa um banco isolado para verificar o fluxo HTTP e simula as respostas do ViaCEP e do Mercado Pago. A opção `VORA_TEST_LIBSQL=1` verifica o adaptador libSQL em arquivo. Use a coleção Postman na API local para repetir os cenários. O pagamento de teste no provedor e a entrega de webhook na nuvem têm validação própria.
 
-| Catálogo em 360 px | Pedido em 360 px |
+[Contrato da API](documentos/API.md) · [Coleção Postman](documentos/Vora.postman_collection.json) · [Resultados de testes](documentos/testes.csv)
+
+| Catálogo em 360 px | Confirmação em 360 px |
 | --- | --- |
-| ![Busca de arroz no catálogo](documentos/capturas/catalogo-360.png) | ![Pedido de auditoria aprovado com integração simulada](documentos/capturas/pedido-360.png) |
+| ![Busca de arroz no catálogo](documentos/capturas/catalogo-360.png) | ![Pedido de auditoria aprovado com pagamento simulado](documentos/capturas/pedido-360.png) |
 
 [Captura do painel administrativo](documentos/capturas/painel-pedidos.png)
 
-- [API e exemplos](documentos/API.md)
-- [Coleção Postman](documentos/Vora.postman_collection.json)
-- [Manual e roteiro de demonstração](documentos/manual.md)
-- [Resultados de testes](documentos/testes.csv)
-- [Auditoria de cliente e administração](documentos/auditoria-vora.md)
-- [Auditoria e roteiro para a apresentação](documentos/auditoria-professor-vora.md)
-- [Requisitos e casos de uso](documentos/requisitos.md)
-- [DER no Draw.io](documentos/loja_virtual.drawio) e [dicionário de dados](documentos/lojaVirtual_dicionario.xlsx)
-- [Criação do SQLite](back-end/src/database/sql/create.sql) e [dados do catálogo](back-end/src/database/sql/insert.sql)
+## Documentação e materiais
 
-O esquema mantém os nomes `produto_pedido` para os itens e `administrador` para os usuários do painel. Valores monetários ficam em centavos inteiros e as novas datas são gravadas em UTC. Pedidos têm uma cópia textual do endereço. Cada tentativa de pagamento guarda a situação e o identificador externo.
+| Material | Onde abrir |
+| --- | --- |
+| Briefing e catálogo | [Público, proposta e referências](documentos/briefing.md) · [Catálogo inicial com 16 produtos](documentos/catalogo-inicial.csv) |
+| Manual e requisitos | [Manual da loja](documentos/manual.md) · [Requisitos e casos de uso](documentos/requisitos.md) |
+| Modelagem de dados | [Guia do banco](documentos/banco-de-dados.md) · [Draw.io editável](documentos/loja_virtual.drawio) · [Dicionário XLSX](documentos/lojaVirtual_dicionario.xlsx) |
+| Auditorias | [Cliente e administração](documentos/auditoria-vora.md) · [Jornada extensa](documentos/auditoria-jornada-extensa.md) · [Apresentação](documentos/auditoria-professor-vora.md) |
+| Marca e mídias | [Identidade visual em PDF](documentos/identidade-visual-vora.pdf) · [Logo em PNG](front-end/src/assets/vora-logo.png) · [Logo em SVG](documentos/marca/vora-logo.svg) · [Versão reduzida em SVG](documentos/marca/vora-simbolo.svg) · [Figma com perfil, post, capa e roteiro de Reel](https://www.figma.com/design/II23DswXQi3jbtvJJz2k6o/Vora-Supermarket-%E2%80%94-Instagram--post-e-Reel?node-id=0-1&p=f) |
+| Protótipo e planejamento | [Protótipo no Lovable](https://vora-supermarket-front.lovable.app/) · [Trello do projeto](https://trello.com/b/Yt18MPIo/loja-virtual-kau%C3%AA-rom%C3%A3o) · [Próximas melhorias em PDF](https://loja-virtual-f96n.vercel.app/proximas-melhorias.pdf) |
+
+Para editar a modelagem, baixe o arquivo `.drawio` e abra no diagrams.net. A planilha descreve campos, chaves, padrões e validações do banco. O Trello usa a visibilidade do workspace e pode exigir acesso à equipe.
+
+Kauê Romão assina a documentação da modelagem e apresentou o projeto. As contribuições de implementação podem ser consultadas por arquivo no [histórico do repositório](https://github.com/KaahRomao/loja-virtual/commits/main/).
