@@ -6,16 +6,19 @@ A Vora é um supermercado virtual voltado a famílias que buscam praticidade e e
 | --- | --- | --- |
 | RF01 | Essencial | Visitante consulta o catálogo, busca pelo nome, filtra por categoria e abre os detalhes. |
 | RF02 | Essencial | Visitante cria uma conta e cliente entra com e-mail e senha. |
-| RF03 | Essencial | Cliente adiciona, remove ou ajusta quantidades no carrinho. |
+| RF03 | Essencial | Visitante ou cliente adiciona, remove ou ajusta quantidades no carrinho. A confirmação exige login como cliente. |
 | RF04 | Essencial | Loja completa os dados do endereço pelo CEP e calcula frete e prazo antes de fechar o pedido. |
 | RF05 | Essencial | Cliente autenticado registra o pedido e consulta seus itens e situação. |
 | RF06 | Essencial | Cliente inicia o Checkout Pro de teste. A API consulta a transação e registra status e identificador. |
-| RF07 | Essencial | Administrador autorizado mantém produtos e categorias e acompanha pedidos. |
-| RF08 | Importante | Administrador avança um pedido pago para envio e entrega ou cancela um pedido pendente. |
+| RF07 | Essencial | Administrador autorizado cadastra, edita, inativa e restaura produtos e categorias e acompanha os pedidos. |
+| RF08 | Importante | Administrador avança um pedido pago para envio e entrega. O dono ou o administrador pode cancelar um pedido pendente elegível. |
+| RF09 | Importante | Visitante ou conta autenticada consulta e altera sua lista de favoritos no navegador. |
+| RF10 | Importante | Visitante vê ofertas, fotos adicionais nas fichas com galeria e disponibilidade no catálogo. |
 | RNF01 | Essencial | Senhas são protegidas com bcrypt. O JWT expira em duas horas. As credenciais são locais ao servidor. |
 | RNF02 | Essencial | O projeto roda com SQLite, Express e React na mesma máquina. Preços em centavos são mantidos sem arredondamento de ponto flutuante no banco. |
 | RNF03 | Essencial | O checkout e a consulta do pedido são utilizáveis em largura de 360 px. |
-| RNF04 | Importante | Um SQLite em volume persistente pode ser copiado e restaurado. Faça a cópia com a API parada ou use a função de backup do SQLite. |
+| RNF04 | Importante | A loja publicada persiste os dados no Turso. Para copiar o arquivo SQLite local, faça a cópia com a API parada ou use o mecanismo de backup do SQLite. |
+| RNF05 | Essencial | A API aplica as permissões dos papéis e limita o histórico do cliente aos próprios pedidos. |
 
 ## Atores e casos de uso
 
@@ -23,29 +26,33 @@ A Vora é um supermercado virtual voltado a famílias que buscam praticidade e e
 flowchart LR
   V[Visitante] --> C[Buscar e abrir produto]
   V --> A[Criar conta]
+  V --> F[Salvar favoritos]
   C --> B[Montar carrinho]
   U[Cliente] --> L[Entrar na loja]
   U --> B
   U --> E[Consultar CEP e fechar pedido]
   U --> P[Pagar em ambiente de teste]
   U --> S[Consultar o pedido]
-  G[Administrador] --> X[Entrar no painel]
+  G[Administrador] --> L
+  G --> X[Entrar no painel]
   G --> M[Gerenciar catálogo]
   G --> R[Acompanhar e atualizar pedidos]
 ```
 
-A regra de entrega é R$ 15 e até 3 dias úteis para São Paulo, R$ 20 e até 5 dias úteis para RJ, MG e ES, e R$ 30 e até 8 dias úteis para os demais estados. O SQLite guarda pedidos e tentativas de pagamento. O carrinho e os favoritos ficam no navegador. A API usa o mesmo login para os dois papéis e permite a cada cliente ver seu próprio histórico.
+| Ator | História de usuário | Requisitos |
+| --- | --- | --- |
+| Visitante | Quero filtrar as categorias e comparar ofertas para encontrar os produtos da minha lista. | RF01, RF10 |
+| Cliente | Quero saber o frete, pagar em teste e acompanhar o pedido na minha conta. | RF04, RF05, RF06 |
+| Administrador | Quero identificar itens para reposição e atualizar a situação dos pedidos. | RF07, RF08 |
 
-## Complemento do dicionário de dados
+## Regras de negócio
 
-O esquema físico atual está em [create.sql](../back-end/src/database/sql/create.sql). Os campos abaixo complementam a planilha existente.
+- A área atendida segue as faixas de UF para CEPs válidos encontrados pelo ViaCEP. Para SP, o frete é de R$ 15,00 e o prazo é de até 3 dias úteis. Para RJ, MG e ES, são R$ 20,00 e até 5 dias úteis. Para os demais estados, são R$ 30,00 e até 8 dias úteis.
+- Uma categoria ativa aparece na vitrine mesmo vazia. Para inativá-la, mova ou inative os produtos e subcategorias ativos. Para restaurar uma subcategoria, a categoria-pai deve estar ativa.
+- Estoque zero significa esgotado. O painel indica estoque baixo de 1 a 14 unidades e sugere repor até 15. A exclusão de produto é lógica e preserva fichas do histórico.
+- O pedido mantém o preço unitário da compra, a quantidade, o frete e a cópia do endereço. O checkout usa uma chave por tentativa para prevenir a duplicação em reenvios. Uma aprovação conciliada pode levar o pedido a Pago.
+- O cancelamento exige pedido pendente elegível. Se existe uma preferência do Mercado Pago, a API verifica expiração e ausência de pagamento aprovado ou em processo antes de devolver o estoque.
 
-| Tabela | Campo | Tipo no SQLite | Uso |
-| --- | --- | --- | --- |
-| cliente | telefone | TEXT opcional, até 24 caracteres na API | Contato informado no cadastro |
-| produto | unidade | TEXT, padrão vazio | Embalagem ou unidade exibida na loja |
-| produto | preco_anterior | INTEGER opcional | Preço anterior em centavos, maior que o preço atual |
-| pedido | chave_checkout | TEXT opcional, 36 caracteres | Identifica uma tentativa de envio e é única por cliente |
-| pedido | referencia_pagamento | TEXT opcional, 41 caracteres | Identifica o pedido no provedor, sem reutilizar IDs de bancos diferentes |
-| pedido | preferencia_id | TEXT opcional | Identificador da preferência devolvida pelo Checkout Pro |
-| pedido | preferencia_url | TEXT opcional | Link do Checkout Pro associado à preferência |
+O checkout de teste, a persistência em nuvem e o acesso por papéis fazem parte da entrega. O catálogo de teste, os compradores de teste e as respostas simuladas da suíte são usados na validação. As melhorias futuras incluem ampliar opções de entrega, evoluir a administração e sincronizar favoritos entre dispositivos.
+
+[Guia do banco](banco-de-dados.md) · [Cobertura de testes](testes.csv) · [Próximas melhorias](https://loja-virtual-f96n.vercel.app/proximas-melhorias.pdf)

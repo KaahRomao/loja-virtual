@@ -1,5 +1,7 @@
 # Auditoria da Vora Supermarket
 
+O reteste de 20/11/2026 passou na suíte da API em SQLite e libSQL, no lint, no build e nas 37 verificações da coleção Postman. A matriz a seguir registra os cenários executados em 18/11/2026. [Resultados da revisão](testes.csv)
+
 Auditoria de 18/11/2026. A mesma matriz passou em **113 cenários no SQLite local e 113 cenários no libSQL em arquivo**. A matriz executou a API Express por HTTP com contas sintéticas, frete controlado e respostas simuladas do SDK do Mercado Pago. O navegador usou uma base SQLite separada em 360 px. Nessa rodada, a consulta real de CEP retornou o endereço e o teste encerrou após registrar o pedido.
 
 ## Estado do projeto

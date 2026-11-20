@@ -23,3 +23,10 @@ API;Receber resposta incompleta do ViaCEP;502 sem calcular frete com dados invá
 Publicação;Iniciar com variáveis do Render e consultar saúde e catálogo;Porta e CORS corretos e leitura do SQLite;Aprovado em execução local com configuração simulada do Render
 Pagamentos;Cancelar com preferência ativa ou expirada;409 com preferência ativa e devolução de estoque após expiração sem cobrança;Aprovado com SDK simulado
 Pagamentos;Registrar aprovação recebida depois do cancelamento;Pedido segue cancelado com alerta no detalhe administrativo;Aprovado com SDK simulado
+2026-11-20 / Modelagem;Comparar os metadados do SQLite novo e do Turso com o dicionário e o DER;13 tabelas 76 campos 14 chaves estrangeiras e 4 triggers;Aprovado. Padrões de data e restrição de preço anterior do Turso documentados
+2026-11-20 / Documentação;Verificar o XML do Draw.io e comparar as rotas com a API Express;Três abas renderizadas e 29 rotas cobertas no contrato;Aprovado com visualizador Draw.io e comparação com o código
+2026-11-20 / Catálogo;Conferir o CSV com a carga do banco novo;16 produtos com categorias descrições preços e estoque;Aprovado com os três scripts SQL em SQLite em memória
+2026-11-20 / Instalação;Rodar API Vite e criar administrador conforme README;Saúde catálogo pelo proxy e login administrativo respondem;Aprovado em portas livres com SQLite descartável
+2026-11-20 / API;Executar a suíte e a coleção Postman em base isolada;SQLite e libSQL aprovados e 37 verificações no Postman;Aprovado com integrações de CEP e pagamento simuladas
+2026-11-20 / Front-end;Rodar lint e build Vite;Comandos concluem sem erro;Aprovado
+2026-11-20 / Render;Consultar a saúde e a resposta a evento de pagamento sem assinatura;API responde 200 e webhook exige configuração própria;Saúde 200. Webhook devolveu 503 por falta do segredo de assinatura

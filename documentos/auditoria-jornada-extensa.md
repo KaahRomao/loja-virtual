@@ -2,11 +2,13 @@
 
 Executada em 18/11/2026.
 
+Em 20/11/2026, a revisão da entrega comparou o esquema local com o Turso e conferiu os documentos do banco. Os resultados abaixo são da jornada original. [Guia do banco](banco-de-dados.md) · [Resultados da revisão](testes.csv)
+
 **Reteste: 66 de 66 passos passaram. Os três testes adicionais também passaram.**
 
 A primeira execução registrou 61 passos aprovados, uma falha de exibição do frete e quatro cenários dependentes do cancelamento pelo cliente. A tabela abaixo registra o reteste após corrigir esses pontos.
 
-Os dois testes adicionais das correções também passaram. A execução usou Chromium via Playwright, a API Express e uma cópia temporária de `documentos/voraSupermarket.sqlite`, com perfis separados para dois clientes, um administrador e um visitante. O ViaCEP e o Mercado Pago foram simulados. O processamento da notificação assinada e as transações de estoque foram executados pela API local. A auditoria não enviou pagamentos nem gravou dados de teste na loja pública.
+A execução usou Chromium via Playwright, a API Express e uma cópia temporária de `documentos/voraSupermarket.sqlite`, com perfis separados para dois clientes, um administrador e um visitante. O ViaCEP e o Mercado Pago foram simulados. O processamento da notificação assinada e as transações de estoque foram executados pela API local.
 
 O lint e o build do front-end passaram. A integração da API passou com SQLite, libSQL em arquivo e o motor oficial do Turso executado em um arquivo isolado.
 
