@@ -23,7 +23,7 @@ O carrinho e os favoritos usam armazenamento do navegador. Cada conta tem seus f
 
 - **Valores e quantidades.** Preços e frete são inteiros em centavos, como `599` para R$ 5,99. Os itens exigem quantidade positiva e a coluna `estoque` tem restrição de saldo não negativo. O SQL novo exige `preco_anterior > preco` quando há oferta.
 - **Idempotência do pedido.** O índice único `pedido_checkout` combina cliente e chave de checkout. A mesma chave e os mesmos dados retornam o pedido original. A API rejeita a reutilização da chave com dados diferentes.
-- **Conciliação.** O índice único `pedido_referencia` identifica a referência enviada ao Mercado Pago. `pagamento.id_transacao_externa` é única. O banco mantém a referência da preferência e os resultados de pagamento. A API usa a referência, o total e a moeda BRL para conciliar.
+- **Conciliação.** A API gera `referencia_pagamento` ao preparar o link do Checkout Pro. O índice `pedido_referencia` garante a unicidade dessa referência. O banco guarda a preferência do Mercado Pago e os resultados da consulta. A API concilia pela referência, pelo total e pela moeda BRL. Cada `pagamento.id_transacao_externa` é único.
 - **Estoque.** `trg_produto_pedido_baixa_estoque` baixa a quantidade ao inserir o item. Pedido, itens e baixa são gravados juntos. O cancelamento elegível repõe o estoque na transação que muda a situação.
 - **Carrinho de apoio.** `trg_produto_carrinho_ai`, `trg_produto_carrinho_au` e `trg_produto_carrinho_ad` atualizam `carrinho.atualizado_em` após inserir, atualizar ou excluir um item no banco.
 

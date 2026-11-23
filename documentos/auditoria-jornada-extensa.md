@@ -69,7 +69,7 @@ O lint e o build do front-end passaram. A integração da API passou com SQLite,
 | 36 | Abre detalhe do pedido 2 | mostra "Cancelado" | 200 · Cancelado no detalhe do cliente | PASSOU |
 | 37 | Tenta **cancelar de novo** o pedido 2 | recusa (400/409), não devolve estoque duas vezes | 409 na repetição do cliente e do admin, estoque devolvido uma única vez | PASSOU |
 | 38 | Tenta **pagar** o pedido 2 cancelado | recusa; não gera link | 409 no pagamento; sem botão nem preferência nova | PASSOU |
-| 39 | Tenta **cancelar um pedido já Pago** (usar pedido aprovado existente, ex.: pedido 14 no ambiente de produção, ou o que o Codex achar no banco local) | comportamento definido (recusa ou estorno). **Registrar**; nunca deixar cancelar "Enviado/Entregue" | 409 para dono e admin; pedido seguiu Pago, aprovado pelo webhook simulado e assinado | PASSOU |
+| 39 | Tenta **cancelar um pedido já Pago** na base isolada de teste | HTTP 409 e pedido permanece Pago | 409 para dono e admin. O pedido permaneceu Pago após a aprovação pelo webhook simulado e assinado. | PASSOU |
 | 40 | Cliente B tenta **cancelar o pedido 1 do A** | 404 (não pode nem saber que existe) e pedido 1 continua "Pendente" | 404 para o cliente B, 401 na rota administrativa, pedido de A seguiu Pendente | PASSOU |
 
 ## Cliente B tenta mexer no que não é dele
