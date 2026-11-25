@@ -4,6 +4,16 @@ A Vora é uma loja virtual de supermercado criada para o Projeto Integrador de D
 
 [Abrir a loja na Vercel](https://loja-virtual-f96n.vercel.app/) · [Consultar a saúde da API no Render](https://vora-supermarket.onrender.com/health) · [Acompanhar a entrega no Trello](https://trello.com/b/Yt18MPIo/loja-virtual-kau%C3%AA-rom%C3%A3o)
 
+**Tecnologias** · React, Vite, Tailwind CSS, Node.js, Express e SQLite/Turso
+
+| Catálogo da loja | Painel de pedidos |
+| --- | --- |
+| ![Busca de arroz no catálogo em uma tela de 360 px](documentos/capturas/catalogo-360.png) | ![Lista de pedidos no painel administrativo](documentos/capturas/painel-pedidos.png) |
+
+## Minha participação
+
+Documentei a modelagem do banco de dados e apresentei o projeto integrador. A modelagem inclui um diagrama editável e um dicionário de dados. [Modelagem do banco](documentos/banco-de-dados.md) · [Histórico de implementação](https://github.com/KaahRomao/loja-virtual/commits/main/)
+
 ## Como usar
 
 1. Explore o catálogo ou procure um produto. Nas fichas com mais de uma foto, use as miniaturas e o botão de ampliar. O coração no cabeçalho abre **Favoritos**.
@@ -130,11 +140,7 @@ A suíte usa um banco isolado para verificar o fluxo HTTP e simula as respostas 
 
 [Contrato da API](documentos/API.md) · [Coleção Postman](documentos/Vora.postman_collection.json) · [Resultados de testes](documentos/testes.csv)
 
-| Catálogo em 360 px | Confirmação em 360 px |
-| --- | --- |
-| ![Busca de arroz no catálogo](documentos/capturas/catalogo-360.png) | ![Pedido de auditoria aprovado com pagamento simulado](documentos/capturas/pedido-360.png) |
-
-[Captura do painel administrativo](documentos/capturas/painel-pedidos.png)
+[Captura da confirmação de um pedido com pagamento simulado](documentos/capturas/pedido-360.png)
 
 ## Documentação e materiais
 
@@ -148,5 +154,3 @@ A suíte usa um banco isolado para verificar o fluxo HTTP e simula as respostas 
 | Protótipo e planejamento | [Protótipo no Lovable](https://vora-supermarket-front.lovable.app/) · [Trello do projeto](https://trello.com/b/Yt18MPIo/loja-virtual-kau%C3%AA-rom%C3%A3o) · [Próximas melhorias em PDF](https://loja-virtual-f96n.vercel.app/proximas-melhorias.pdf) |
 
 Para editar a modelagem, baixe o arquivo `.drawio` e abra no diagrams.net. A planilha descreve campos, chaves, padrões e validações do banco. O Trello usa a visibilidade do workspace e pode exigir acesso à equipe.
-
-Kauê Romão assina a documentação da modelagem e apresentou o projeto. As contribuições de implementação podem ser consultadas por arquivo no [histórico do repositório](https://github.com/KaahRomao/loja-virtual/commits/main/).
